@@ -36,7 +36,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 | **[Sniper Arena](#-sniper-arena)** | Silent aim, ragebot, aimbot, skin changer, ESP with preview and radar |
 | **[Violence District](#-violence-district)** | Auto repair, instant escape, killer auto slash and hook, auto farm both roles, ESP |
 | **[Anime Dice](#-anime-dice)** | Smart Kaitun, fast roll, auto upgrade and rebirth, auto tower, redeem all codes |
-| **[Ride A Pet](#-ride-a-pet)** | Instant egg collect, rare egg hunter with server hop, auto hatch, best pets, Smart Kaitun |
+| **[Ride A Pet](#-ride-a-pet)** | Smart Candy, Halloween eggs, fast egg farming, Instant E, Smart Kaitun |
 | **[FPS AirDrop Arena](#-fps-airdrop-arena)** | Silent aim, ragebot, triggerbot, hunt, auto rewards, loot best gear from anywhere |
 | **[BloxStrike](#-bloxstrike)** | Silent aim, aimbot, triggerbot, gun mods, skin changer, bunny hop, ESP |
 | **[+1 Stone Skipping](#-1-stone-skipping)** | Smart Kaitun, auto throw and train, best stones, auto rebirth, fast hatch, redeem codes |
@@ -218,18 +218,22 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 <details>
 <summary><b>Features</b></summary>
 
-- **Smart Kaitun**: collects eggs, fills nests, hatches, places your best pets, feeds them and rebirths on its own
+- **Smart Kaitun**: collects eggs, fills nests, hatches, places your best pets and follows your rebirth target
 - Smart spending: saves for the next rebirth before buying luck upgrades
-- **Instant Eggs**: grabs the best eggs on the map and every one reaches your base, no returned eggs
+- **Fast Egg Farming**: nearby routes for quicker deliveries, with a separate rare egg hunter
+- **Smart Auto Candy**: prioritizes the largest eligible stacks, with smoother returns and automatic retries
+- **Return Speed**: adjustable up to 600%, default 350%; higher speeds may be rejected by the game
+- **Instant E**: interact without holding the key
+- **Halloween Eggs**: checks funds, buys and tracks purchased eggs through planting and hatching
 - **Minimum Egg Rarity**: skip cheap eggs and farm rare ones only
-- **Clear Junk Eggs**: hatches your cheap eggs and sells the pets that come out
-- **Rare Egg Hunter**: only takes top rarity eggs and hops servers until it finds them
+- **Clear Junk Eggs (beta)**: hatches your cheap eggs and sells the pets that come out
+- **Rare Egg Hunter**: only takes top rarity eggs and can hop servers to search (server hopping is beta)
 - Smart egg stock: once your bag is full, only picks eggs better than the ones you hold
 - Egg filters by rarity, egg and minimum luck
-- **Volcano Dip** for Magma eggs, and the volcano climb finishes by itself when a Volcanic Egg spawns
-- Auto place eggs (best luck or fastest first), auto hatch from anywhere
+- **Volcano Dip** for Magma eggs, plus automatic volcano collection (Volcanic Egg collection is beta)
+- Auto placement and hatching, with weight-aware fastest-first order
 - Auto place best pets (weight and mutations counted), auto collect cash, auto feed
-- Auto upgrade hatch luck, auto rebirth, auto claim index, offline and group rewards
+- Auto upgrade hatch luck, auto rebirth (beta), auto claim index, offline and group rewards
 - **Auto Sell Pets** by rarity, keeping your best, favorites, mutated pets and the pets you need for rebirth
 - **Auto Fusion** for the new fusion machine: places four pets, fuses and claims the result
 - **Auto Buy Stock**: buys the food and radars you pick the moment they are in stock
@@ -237,7 +241,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 - Egg ESP with rarity, odds and distance
 - Teleport to plot, shops, volcano and players
 - Speed, jump, fly, noclip, infinite jump, anti AFK, rejoin, server hop
-- Less lag while farming, even with thousands of eggs in your bag
+- Restores movement settings after farming
 - **Performance**: Boost FPS, hide other players' pets and eggs, FPS cap, disable 3D rendering for AFK farming
 - Troll: fling, stick to player, spectate
 

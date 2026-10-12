@@ -46,6 +46,7 @@ xDTaraZ.Config = {
     PickupLimit = 90,
     PickupRetryStep = 0.04,
     PickupReplyTimeout = 0.6,
+    PickupAckWait = 0.12,
     PickupTotalTimeout = 1.5,
     TpSettle = 0.1, VolcanoSettle = 0.3, DismountTimeout = 10, DismountToolWindow = 2,
     DropOutside = 4,
@@ -53,6 +54,7 @@ xDTaraZ.Config = {
     DropSettleMax = 0.35,
     DropEndsSlack = 0.03,
     DropAppearTimeout = 1.0,
+    DropLandMax = 8,
     StaleDropDistance = 20,
     DepositTimeout = 1.5,
     RunBudget = 4.0,
@@ -67,6 +69,7 @@ xDTaraZ.Config = {
     GoneBlacklistSec = 2,
     MountTimeout = 1.5, MountTries = 3, MountGap = 0.35,
     CarryDeferCap = 3,
+    ReturnHopMax = 400,
     EggTick = 0.05, SlowTick = 1, EspTick = 0.25, EspTickMobile = 0.5,
     EspRange = 4000, EspRangeMobile = 1500,
     FailLimit = 5, FailWindow = 10,
@@ -78,11 +81,57 @@ xDTaraZ.Config = {
     PumpTick = 0.5, PlotRetry = 1, MobileViewport = 900,
     UnloadCarryTimeout = 2,
     JobTick = {
-        Volcano = 0.25, Junk = 0.25, Hatch = 1, Plant = 2, Pets = 2,
+        Volcano = 0.25, Halloween = 0.1, Junk = 0.25, Hatch = 1, Plant = 2, Pets = 2,
         Feed = 1, Sell = 10, Fusion = 2, Economy = 3, Shop = 5, Rewards = 30, Boosts = 5, Server = 5,
         Webhook = 1, Settle = 1, Kaitun = 2,
     },
     JobBackoff = 40,
+
+    HalloweenSettle = 0.55,
+    CandyPickupSettle = 0.15,
+    CandyCooldown = 2.1,
+    CandyPrepAhead = 0.8,
+    CandyPickupReach = 28,
+    CandyPickupLimit = 32,
+    CandyDirectFactor = 2,
+    CandyDirectMax = 400,
+    CandyDepositReach = 18,
+    CandyRangeDefault = 1500,
+    CandyCarryGoal = 6,
+    CandySpoilAt = 12,
+    CandyCollectTimeout = 2.5,
+    CandyDepositTimeout = 2.5,
+    CandySkipSec = 16,
+    CandyStateCache = 3,
+    CandyReturnFactor = 1,
+    CandyDepositReserve = 2,
+    TravelStepMax = 0.1,
+    TravelStopDistance = 2,
+    CandyPadLift = 3,
+    CandyPadPos = Vector3.new(-45839.9, 40368.5, -20118.0),
+    PortalPos = Vector3.new(-46800, 40390, -20000),
+    DoorCooldown = 180,
+    DoorStateCache = 3,
+    DoorStand = 6,
+    PumpkinCooldown = 40,
+    PumpkinStateCache = 3,
+    HalloweenPrio = 70,
+    HalloweenPhaseBudget = 12,
+    HalloweenManualTimeout = 180,
+    HalloweenEggGap = 3,
+    HalloweenPurchaseTimeout = 4,
+    HalloweenShopRange = 20,
+    HalloweenShopRetry = 8,
+    HalloweenZoneTries = 5,
+    HalloweenZoneGap = 2,
+    RitualRetry = 20,
+    RitualPrompts = 4,
+    RitualPromptGap = 0.4,
+    RitualStand = 8,
+    EventStreamDist = 512,
+    EventStreamTimeout = 5,
+    GroundRayUp = 30,
+    GroundRayDown = 60,
 
     VolcanoStreamTimeout = 5,
     VolcanoTouchEvery = 0.25,
@@ -90,7 +139,6 @@ xDTaraZ.Config = {
     VolcanoStandLift = 3,
     VolcanoRetry = 30,
     VolcanoDipSettle = 0.7,
-    VolcanoTpTries = 4,
     VolcanoRefire = 0.3,
     VolcanoTailEggs = 1,
     VolcanoClaimSec = 2,
@@ -198,8 +246,8 @@ xDTaraZ.Config = {
     KaitunSteerEvery = 60,
 
     UpdateLog = {
-        { "2026-10-05", "Teleport To Best Egg is back (Home tab)\nFixed Volcano Dip sometimes not reaching the volcano after picking up an egg\nAuto Feed is about 5x faster\nFixed Auto Place Eggs saying the plot is full when it is not\nFixed Volcano Dip and Auto Volcano Egg doing nothing unless Auto Eggs was on\nA returned egg no longer stops the whole farm, it slows delivery and keeps going\nAuto Reconnect after a disconnect\nWeather alerts now name the storm type\nScript rebuilt from scratch for the new game update\nEggs reach your base every time, no more returned eggs\nMuch less lag while farming with a big inventory\nClear Junk Eggs: hatch cheap eggs and sell the pets\nMinimum Egg Rarity to farm rare eggs only\nFixed Auto Place Best Pets swapping out good pets\nPerformance: Boost FPS, hide other pets and eggs, FPS cap, disable 3D\nFixed the inventory bar not coming back after farming\nRemoved the Stop All button" },
-        { "2026-10-04", "Rebuilt egg collecting: faster trips and no more returned eggs\nRide pet picker, rare egg hunter and plant order\nPet protect list, safer selling and smarter spending\nClear Junk Eggs now sells what it hatches, and Minimum Egg Rarity skips cheap eggs" },
+        { "2026-10-12", "Improved Auto Candy targeting and smoother returns\nAdded Instant E and return speed controls up to 600% (default 350%)\nEvent farming now retries at a lower speed after movement rejection\nImproved Halloween egg buying and purchased egg hatching\nFixed egg delivery, hatch order, fusion claims and Kaitun target handling" },
+        { "2026-10-11", "Updated Halloween candy, doors, pumpkins, event ESP and teleports\nImproved fusion eligibility and ground placement" },
     },
 }
 
@@ -371,7 +419,7 @@ function xDTaraZ:Connect(signal, handler)
 end
 
 xDTaraZ.StopOrder = {
-    "Kaitun", "Guard", "Eggs", "Hunter", "Volcano", "Junk", "Hatch", "Pets", "Sell", "Fusion",
+    "Kaitun", "Guard", "Eggs", "Hunter", "Volcano", "Halloween", "Prompts", "Junk", "Hatch", "Pets", "Sell", "Fusion",
     "Economy", "Shop", "Rewards", "Boosts", "Troll", "Server", "Webhook", "Visual",
 }
 
@@ -431,18 +479,14 @@ end
 xDTaraZ.GameLib = {
     Data = {}, Svc = {}, Missing = {},
     Cache = {}, NetSearched = false,
-    EggInfo = {}, PetInfo = {}, RarityOrder = {}, RarityRank = {},
+    EggInfo = {}, PetInfo = {}, RarityOrder = {}, RarityRank = {}, FuseQuality = {},
     Foods = {}, FoodOrder = {}, ShopItems = {}, Rebirths = { Cap = 0, Costs = {} }, RebirthReq = {},
     IndexStages = {}, Mutations = {},
 }
 
 local GameLib = xDTaraZ.GameLib
 
-GameLib.DataModules = {
-    "Pets", "Eggs", "Spawns", "General", "Rebirths", "HatchLuck", "Mutations", "Weather",
-    "Foods", "Shop", "IndexRewards", "Volcano", "Fusion", "EggBaskets",
-}
-GameLib.ServiceModules = { "General", "EggCycle", "DayNight", "EggDeliveryRules", "SellValue", "PetAging" }
+GameLib.ServiceModules = { "General", "EggCycle", "DayNight", "EggDeliveryRules", "SellValue", "PetAging", "HalloweenEvent" }
 
 GameLib.Denied = {
     Restock = true, SetOpenShop = true, RegisterSkipTarget = true, RegisterSkipAllTarget = true,
@@ -471,6 +515,10 @@ GameLib.Needs = {
     AutoRebirth = { "Rebirth" },
     AutoShop = { "ShopStock", "BuyWithCash" },
     AutoClaim = { "ClaimIndexReward", "OfflineEarnings" },
+    AutoCandy = { "CollectCandy", "GetCandyState" },
+    AutoTrickOrTreat = { "KnockDoor", "GetDoorState" },
+    AutoPumpkin = { "SearchPumpkin", "GetPumpkinState" },
+    AutoHalloweenEgg = { "BuyHalloweenEgg" },
     Kaitun = { "EggPickup", "BasketDrop", "ActiveEggs" },
 }
 
@@ -710,13 +758,37 @@ function GameLib.LoadFolder(folder, names, into, label, stopAt)
     end
 end
 
+---@param folder  Instance  GameData or a folder nested inside it
+---@param prefix  string    "" or a path like "Halloween."
+function GameLib.LoadDataTree(folder, prefix, stopAt)
+    for _, child in ipairs(folder:GetChildren()) do
+        if os.clock() >= stopAt then return end
+        local key = prefix .. child.Name
+        if child:IsA("ModuleScript") then
+            if GameLib.Data[key] == nil then
+                GameLib.Data[key] = GameLib.Require(child)
+                if not GameLib.Data[key] then GameLib.Missing["GameData." .. key] = "require failed" end
+            end
+        elseif child:IsA("Folder") then
+            GameLib.LoadDataTree(child, key .. ".", stopAt)
+        end
+    end
+end
+
 function GameLib.LoadModules()
     local deadline = xDTaraZ.Config.GameLibDeadline
     local dataFolder = ReplicatedStorage:WaitForChild("GameData", deadline)
     local svcFolder = ReplicatedStorage:FindFirstChild("GameServices") or ReplicatedStorage:WaitForChild("GameServices", 1)
     local stopAt = os.clock() + deadline
 
-    GameLib.LoadFolder(dataFolder, GameLib.DataModules, GameLib.Data, "GameData", stopAt)
+    if dataFolder then
+        GameLib.LoadDataTree(dataFolder, "", stopAt)
+        local halloween = dataFolder:FindFirstChild("Halloween")
+        local debuffs = halloween and halloween:FindFirstChild("Debuffs")
+        if debuffs and GameLib.Data["Halloween.Debuffs"] == nil then
+            GameLib.Data["Halloween.Debuffs"] = GameLib.Require(debuffs)
+        end
+    end
     GameLib.LoadFolder(svcFolder, GameLib.ServiceModules, GameLib.Svc, "GameServices", stopAt)
 end
 
@@ -831,10 +903,61 @@ local function BuildEconomy()
     end
 end
 
+local function BuildFuseQuality()
+    table.clear(GameLib.FuseQuality)
+    local raw = GameLib.Data.WeightedFuseData
+    if type(raw) ~= "table" then return end
+
+    local holders = { raw.Pets, raw.Inputs, raw }
+    for _, holder in ipairs(holders) do
+        if type(holder) == "table" then
+            for key, value in pairs(holder) do
+                local name = key
+                local quality = value
+                if type(value) == "table" then
+                    name = value.Name or value.PetName or value.Pet
+                    quality = value.Quality or value.Value or value.Score
+                end
+                if type(name) == "string" and tonumber(quality) and GameLib.PetInfo[name] then
+                    GameLib.FuseQuality[name] = tonumber(quality)
+                end
+            end
+        end
+        if next(GameLib.FuseQuality) then return end
+    end
+end
+
 function GameLib.Build()
     BuildEggsAndPets()
     BuildRarities()
     BuildEconomy()
+    BuildFuseQuality()
+end
+
+---@return number  pet sell price multiplier straight from the game's SellValue module
+function GameLib.SellMultiplier()
+    local sellValue = GameLib.Svc.SellValue
+    local mult = type(sellValue) == "table" and tonumber(sellValue.SellIncomeMultiplier)
+    return mult or xDTaraZ.Config.SellPriceMult
+end
+
+---@return number  the game's income multiplier for a rebirth count
+function GameLib.RebirthMultiplier(done)
+    local rebirths = GameLib.Data.Rebirths
+    if type(rebirths) == "table" and type(rebirths.GetMultiplier) == "function" then
+        local ok, mult = GameLib.Call(rebirths.GetMultiplier, done)
+        if ok and tonumber(mult) then return tonumber(mult) end
+    end
+    return 1 + done
+end
+
+---@return number  hatch luck multiplier: bought upgrades times the live event multiplier
+function GameLib.LuckMult()
+    local saved = LocalPlayer:FindFirstChild("SavedData")
+    local upgrades = saved and saved:FindFirstChild("HatchUpgrades")
+    local bought = upgrades and tonumber(upgrades.Value) or 0
+    local event = tonumber(ReplicatedStorage:GetAttribute("HatchLuckEventMultiplier")) or 1
+    return (1 + bought + 4 * math.floor(bought / 5)) * event
 end
 
 ---@return string|nil  why the option cannot run
@@ -879,19 +1002,26 @@ xDTaraZ.Player = {
     Client = LocalPlayer,
     Char = nil, Humanoid = nil, Root = nil,
     Epoch = 0,
+    BindVersion = 0,
     CharConns = {},
     PlotModel = nil, Baseplate = nil, PlotConn = nil, PlotRetryAt = 0,
 }
 
 function xDTaraZ.Player:Lose(char)
+    if self.Char ~= char then return end
     if self.LostChar == char then return end
     self.LostChar = char
+    self.BindVersion += 1
+    self.Humanoid, self.Root = nil, nil
     self.Epoch += 1
     xDTaraZ.Util.Try("abort on death", function() xDTaraZ.Tasks.Abort("death") end)
     xDTaraZ.Util.Try("forget mount", function() xDTaraZ.Mount.Forget() end)
 end
 
 function xDTaraZ.Player:Unbind()
+    self.BindVersion += 1
+    self.Epoch += 1
+    self.Char, self.Humanoid, self.Root = nil, nil, nil
     for _, conn in ipairs(self.CharConns) do
         conn:Disconnect()
     end
@@ -903,6 +1033,10 @@ function xDTaraZ.Player:Unbind()
 end
 
 function xDTaraZ.Player:Bind(char)
+    if not State.Alive or State.Unloading then return end
+    if self.Char and self.Char ~= char then self:Lose(self.Char) end
+    self.BindVersion += 1
+    local version = self.BindVersion
     for _, conn in ipairs(self.CharConns) do
         conn:Disconnect()
     end
@@ -912,7 +1046,7 @@ function xDTaraZ.Player:Bind(char)
     task.spawn(function()
         local hum = char:WaitForChild("Humanoid", Config.LoadTimeout)
         local hrp = char:WaitForChild("HumanoidRootPart", Config.LoadTimeout)
-        if self.Char ~= char then return end
+        if not State.Alive or State.Unloading or self.Char ~= char or self.BindVersion ~= version then return end
         if not hum or not hrp then
             warn(Config.Tag, "character parts missing after", Config.LoadTimeout, "s")
             return
@@ -998,11 +1132,17 @@ end
 
 xDTaraZ.Geo = {}
 
+---@return number  root clearance for the current character and mount
+function xDTaraZ.Geo.Lift(minimum)
+    local hum, root = xDTaraZ.Player.Humanoid, xDTaraZ.Player.Root
+    return math.max(minimum or Config.StandLift, (hum and hum.HipHeight or 0) + (root and root.Size.Y / 2 or 0))
+end
+
 ---@return Vector3  nearest point inside the baseplate edge, standing height
 function xDTaraZ.Geo.EdgeInside(bp, target)
     local rel = bp.CFrame:PointToObjectSpace(target)
     local hx, hz = bp.Size.X / 2 - Config.EdgeInset, bp.Size.Z / 2 - Config.EdgeInset
-    local clamped = Vector3.new(math.clamp(rel.X, -hx, hx), bp.Size.Y / 2 + Config.StandLift, math.clamp(rel.Z, -hz, hz))
+    local clamped = Vector3.new(math.clamp(rel.X, -hx, hx), bp.Size.Y / 2 + xDTaraZ.Geo.Lift(), math.clamp(rel.Z, -hz, hz))
     return bp.CFrame:PointToWorldSpace(clamped)
 end
 
@@ -1016,7 +1156,7 @@ function xDTaraZ.Geo.Outside(bp, target, dist)
     local len = math.sqrt(dx * dx + dz * dz)
     if len < 1e-3 then dx, dz, len = 1, 0, 1 end
 
-    return bp.CFrame:PointToWorldSpace(Vector3.new(cx + dx / len * dist, bp.Size.Y / 2 + Config.StandLift, cz + dz / len * dist))
+    return bp.CFrame:PointToWorldSpace(Vector3.new(cx + dx / len * dist, bp.Size.Y / 2 + xDTaraZ.Geo.Lift(), cz + dz / len * dist))
 end
 
 ---@return Vector3  pickup spot on the egg-to-plot line, within reach of the egg
@@ -1024,15 +1164,15 @@ function xDTaraZ.Geo.StandPoint(bp, eggPos)
     local edge = xDTaraZ.Geo.EdgeInside(bp, eggPos)
     local dir = (edge - eggPos) * Vector3.new(1, 0, 1)
     local span = dir.Magnitude
-    if span < 1e-3 then return Vector3.new(eggPos.X, eggPos.Y + Config.StandLift, eggPos.Z) end
+    if span < 1e-3 then return Vector3.new(eggPos.X, eggPos.Y + xDTaraZ.Geo.Lift(), eggPos.Z) end
 
     local spot = eggPos + dir.Unit * math.min(Config.PickupReach, span)
-    return Vector3.new(spot.X, eggPos.Y + Config.StandLift, spot.Z)
+    return Vector3.new(spot.X, eggPos.Y + xDTaraZ.Geo.Lift(), spot.Z)
 end
 
----@return number  flat studs from a point to the plot edge
+---@return number  spatial distance to the plot entry, including elevated spawns
 function xDTaraZ.Geo.Trip(bp, from)
-    return xDTaraZ.Util.Flat(from, xDTaraZ.Geo.EdgeInside(bp, from))
+    return (from - xDTaraZ.Geo.EdgeInside(bp, from)).Magnitude
 end
 
 function xDTaraZ.Geo.InPlot(pos)
@@ -1047,7 +1187,8 @@ xDTaraZ:Connect(LocalPlayer.CharacterRemoving, function(char) xDTaraZ.Player:Los
 xDTaraZ.Tasks = { Current = nil, Prio = { Recover = 100, Volcano = 80, Hunter = 70, Mount = 65, Eggs = 60, Plot = 40, Travel = 30, Manual = 20 } }
 
 function xDTaraZ.Tasks.Carrying()
-    return xDTaraZ.Player:BasketCount() > 0
+    if xDTaraZ.Player:BasketCount() > 0 then return true end
+    return xDTaraZ.Halloween ~= nil and xDTaraZ.Halloween.Carried() > 0
 end
 
 function xDTaraZ.Tasks.EggsBusy()
@@ -1059,6 +1200,8 @@ end
 ---@return table|nil  token { owner, prio, epoch, dead, preempt }
 function xDTaraZ.Tasks.Request(owner, prio)
     if not xDTaraZ.State.Alive then return nil end
+    if xDTaraZ.State.Unloading and owner ~= "Recover" then return nil end
+    if not xDTaraZ.Player:IsAlive() then return nil end
 
     if prio <= xDTaraZ.Tasks.Prio.Manual and xDTaraZ.Tasks.Carrying() then
         table.insert(xDTaraZ.State.PendingNotify, { "Mario Hub", "Finish the egg delivery first" })
@@ -1078,7 +1221,7 @@ function xDTaraZ.Tasks.Request(owner, prio)
         return nil
     end
 
-    local token = { owner = owner, prio = prio, epoch = xDTaraZ.Player.Epoch, dead = false, preempt = false }
+    local token = { owner = owner, prio = prio, epoch = xDTaraZ.Player.Epoch, thread = coroutine.running(), dead = false, preempt = false }
     local hrp = xDTaraZ.Player.Root
     if prio <= xDTaraZ.Tasks.Prio.Plot and hrp then token.home = hrp.CFrame end
     xDTaraZ.Tasks.Current = token
@@ -1088,11 +1231,12 @@ end
 function xDTaraZ.Tasks.Release(token)
     if not token or token.dead then return end
     token.dead = true
-    if xDTaraZ.Tasks.Current == token then xDTaraZ.Tasks.Current = nil end
+    if xDTaraZ.Tasks.Current ~= token then return end
+    xDTaraZ.Tasks.Current = nil
 
     local opts = xDTaraZ.Options
     local back = opts and opts.ReturnAfter
-    if not token.home or not back or xDTaraZ.Tasks.Carrying() then return end
+    if not token.home or not back or not xDTaraZ.State.Alive or xDTaraZ.State.Unloading or xDTaraZ.Tasks.Carrying() then return end
     local hrp = xDTaraZ.Player.Root
     if hrp and xDTaraZ.Player:IsAlive() and token.epoch == xDTaraZ.Player.Epoch then
         hrp.CFrame = token.home
@@ -1105,7 +1249,7 @@ function xDTaraZ.Tasks.Holds(token)
     if not token or token.dead or not xDTaraZ.State.Alive then return false end
     if xDTaraZ.Tasks.Current ~= token or token.epoch ~= xDTaraZ.Player.Epoch then return false end
     if not token.preempt or token.critical then return true end
-    local delivering = token.owner == "Eggs" or token.owner == "Hunter" or token.owner == "Recover" or token.owner == "Volcano"
+    local delivering = token.owner == "Eggs" or token.owner == "Hunter" or token.owner == "Recover" or token.owner == "Volcano" or token.owner == "Halloween"
     if delivering and ((xDTaraZ.Eggs and xDTaraZ.Eggs.CarryCritical) or xDTaraZ.Tasks.Carrying()) then return true end
 
     xDTaraZ.Tasks.Release(token)
@@ -1128,7 +1272,7 @@ end
 
 ---@return boolean  refuses dead tokens
 function xDTaraZ.Tasks.Teleport(token, cf)
-    if not token or token.dead or xDTaraZ.Tasks.Current ~= token then return false end
+    if not xDTaraZ.Tasks.Holds(token) then return false end
     if token.epoch ~= xDTaraZ.Player.Epoch or not xDTaraZ.Player:IsAlive() then return false end
     local hrp = xDTaraZ.Player.Root
     if not hrp then return false end
@@ -1143,6 +1287,80 @@ function xDTaraZ.Tasks.Abort(why)
     if not cur then return end
     cur.dead, cur.why = true, why
     xDTaraZ.Tasks.Current = nil
+end
+
+---@async
+---@return boolean  reached the destination with bounded movement per frame
+function xDTaraZ.Tasks.Travel(token, cf, speed, timeout, opts)
+    local deadline = os.clock() + timeout
+    local collisions, originalCollisions, clipConnections = {}, {}, {}
+    local root = xDTaraZ.Player.Root
+    local rotation = root and root.CFrame.Rotation
+    local hum = xDTaraZ.Player.Humanoid
+    local autoRotate = hum and hum.AutoRotate
+    local ok, reached = pcall(function()
+        if hum then hum.AutoRotate = false end
+        if opts and opts.noClip and xDTaraZ.Player.Char then
+            local function addPart(part)
+                if not part:IsA("BasePart") or originalCollisions[part] ~= nil then return end
+                originalCollisions[part] = part.CanCollide
+                collisions[#collisions + 1] = part
+                part.CanCollide = false
+            end
+            local function addModel(model)
+                for _, part in ipairs(model:GetDescendants()) do addPart(part) end
+                if model.DescendantAdded then
+                    clipConnections[#clipConnections + 1] = model.DescendantAdded:Connect(function(part)
+                        if xDTaraZ.Tasks.Holds(token) then addPart(part) end
+                    end)
+                end
+            end
+            addModel(xDTaraZ.Player.Char)
+            local joint = root and root.FindFirstChild and root:FindFirstChild("PetMountJoint")
+            local mount = joint and joint.Part1 and joint.Part1:FindFirstAncestorOfClass("Model")
+            if mount and mount ~= xDTaraZ.Player.Char then addModel(mount) end
+            clipConnections[#clipConnections + 1] = RunService.Stepped:Connect(function()
+                if not xDTaraZ.Tasks.Holds(token) then return end
+                for _, part in ipairs(collisions) do
+                    if part.Parent and part.CanCollide then part.CanCollide = false end
+                end
+            end)
+        end
+        while xDTaraZ.Tasks.Holds(token) and os.clock() < deadline do
+            if opts and opts.maxFlags ~= nil and xDTaraZ.Player:Flags() > opts.maxFlags then return false end
+            if opts and opts.done and opts.done() then return true end
+            local hrp = xDTaraZ.Player.Root
+            if not hrp or not xDTaraZ.Player:IsAlive() then return false end
+            local delta = cf.Position - hrp.Position
+            local reach = opts and opts.reach or Config.TravelStopDistance
+            if delta.Magnitude <= reach then return true end
+            if hum then hum:Move(Vector3.zero) end
+            local elapsed = task.wait()
+            if not xDTaraZ.Tasks.Holds(token) then return false end
+            if opts and opts.maxFlags ~= nil and xDTaraZ.Player:Flags() > opts.maxFlags then return false end
+            if opts and opts.done and opts.done() then return true end
+            for _, part in ipairs(collisions) do
+                if part.Parent and part.CanCollide then part.CanCollide = false end
+            end
+            delta = cf.Position - hrp.Position
+            if delta.Magnitude <= reach then return true end
+            local currentSpeed = type(speed) == "function" and speed() or speed
+            if type(currentSpeed) ~= "number" or currentSpeed ~= currentSpeed or currentSpeed <= 0 or currentSpeed == math.huge then return false end
+            local step = math.min(delta.Magnitude, currentSpeed * math.min(elapsed, Config.TravelStepMax))
+            local pos = hrp.Position + delta.Unit * step
+            local nextCF = CFrame.new(pos) * rotation
+            if not xDTaraZ.Tasks.Teleport(token, nextCF) then return false end
+        end
+        return false
+    end)
+
+    for _, connection in ipairs(clipConnections) do connection:Disconnect() end
+    for _, part in ipairs(collisions) do
+        if part.Parent then part.CanCollide = originalCollisions[part] end
+    end
+    if hum and hum.Parent then hum.AutoRotate = autoRotate end
+    if not ok then error(reached, 0) end
+    return reached
 end
 
 function xDTaraZ.Tasks.ReleaseAll(why)
@@ -1160,8 +1378,11 @@ xDTaraZ.Scheduler.Defaults = {
     { "Eggs", "Eggs", "Step", { "AutoEggs" } },
     { "Hunter", "Hunter", "Step", { "EggHunter" } },
     { "Volcano", "Volcano", "Step", { "VolcanoDip", "VolcanoObby" } },
+    { "Halloween", "Halloween", "Step", { "AutoCandy", "AutoTrickOrTreat", "AutoPumpkin", "AutoHalloweenEgg", "AutoRitual" }, function() return xDTaraZ.Halloween.AnyActive() end },
     { "Junk", "Junk", "Step", { "ClearJunk" } },
-    { "Hatch", "Hatch", "Step", { "AutoHatch" } },
+    { "Hatch", "Hatch", "Step", { "AutoHatch" }, function()
+        return xDTaraZ.Util.Opt("AutoHatch") == true or (xDTaraZ.Util.Opt("HalloweenAutoHatch") ~= false and next(xDTaraZ.Hatch.Purchased) ~= nil)
+    end },
     { "Plant", "Hatch", "PlantStep", { "AutoPlaceEggs" } },
     { "Pets", "Pets", "Step", { "AutoEquipBest", "AutoCollectCash" } },
     { "Feed", "Pets", "FeedStep", { "AutoFeed" } },
@@ -1173,6 +1394,7 @@ xDTaraZ.Scheduler.Defaults = {
     { "Boosts", "Boosts", "Step", nil },
     { "Server", "Server", "Step", nil },
     { "Esp", "Esp", "Step", { "EggEsp" } },
+    { "HalloweenEsp", "Halloween", "EspStep", { "HalloweenEsp" } },
     { "Webhook", "Webhook", "Step", nil },
     { "Settle", "Eggs", "SettleStep", nil },
     { "Kaitun", "Kaitun", "Step", { "Kaitun" } },
@@ -1185,10 +1407,14 @@ function xDTaraZ.Scheduler.Add(name, interval, fn, enabledFn, toggles)
     if not job then
         job = { name = name, due = 0, busy = false }
         job.runner = function()
-            local ok, err = pcall(job.fn)
+            job.thread = coroutine.running()
+            local ok, err = pcall(function()
+                if not State.Alive or State.Unloading then return end
+                job.fn()
+            end)
             job.busy = false
-            if ok then return end
-            xDTaraZ.Scheduler.Fail(job, err)
+            if not ok then xDTaraZ.Scheduler.Fail(job, err) end
+            job.thread = nil
         end
         xDTaraZ.Scheduler.Jobs[name] = job
         table.insert(xDTaraZ.Scheduler.Order, job)
@@ -1210,6 +1436,8 @@ function xDTaraZ.Scheduler.Enabled(job)
 end
 
 function xDTaraZ.Scheduler.Fail(job, err)
+    local token = xDTaraZ.Tasks.Current
+    if token and job.thread and token.thread == job.thread then xDTaraZ.Tasks.Abort("job error: " .. job.name) end
     local now = os.clock()
     local log = State.Errors[job.name] or {}
     State.Errors[job.name] = log
@@ -1240,17 +1468,23 @@ function xDTaraZ.Scheduler.Fail(job, err)
 end
 
 function xDTaraZ.Scheduler.Run(job)
+    if job.busy or not State.Alive or State.Unloading then return end
     job.busy = true
     task.spawn(job.runner)
 end
 
 function xDTaraZ.Scheduler.Tick()
-    if not State.Alive then return end
+    if not State.Alive or State.Unloading then return end
     local now = os.clock()
     for _, job in ipairs(xDTaraZ.Scheduler.Order) do
         if job.busy or now < job.due then continue end
         job.due = now + job.interval
-        if not xDTaraZ.Scheduler.Enabled(job) then continue end
+        local ok, enabled = pcall(xDTaraZ.Scheduler.Enabled, job)
+        if not ok then
+            xDTaraZ.Scheduler.Fail(job, enabled)
+            continue
+        end
+        if not enabled then continue end
         xDTaraZ.Scheduler.Run(job)
     end
 end
@@ -1288,18 +1522,18 @@ end
 function xDTaraZ.Scheduler.AddDefaults()
     local espTick = xDTaraZ.Platform.Mobile and Config.EspTickMobile or Config.EspTick
     for _, row in ipairs(xDTaraZ.Scheduler.Defaults) do
-        local name, owner, method, toggles = row[1], row[2], row[3], row[4]
-        local interval = Config.JobTick[name] or espTick
-        if xDTaraZ.Scheduler.Jobs[name] then continue end
+	local name, owner, method, toggles, enabledFn = row[1], row[2], row[3], row[4], row[5]
+	local interval = Config.JobTick[name] or espTick
+	if xDTaraZ.Scheduler.Jobs[name] then continue end
 
-        local module = rawget(xDTaraZ, owner)
-        local fn = module and module[method]
-        if type(fn) ~= "function" then
-            warn(Config.Tag, "no job function " .. owner .. "." .. method)
-            continue
-        end
-        xDTaraZ.Scheduler.Add(name, interval, fn, nil, toggles)
-    end
+	local module = rawget(xDTaraZ, owner)
+	local fn = module and module[method]
+	if type(fn) ~= "function" then
+		warn(Config.Tag, "no job function " .. owner .. "." .. method)
+		continue
+	end
+	xDTaraZ.Scheduler.Add(name, interval, fn, enabledFn, toggles)
+end
 end
 
 function xDTaraZ.Scheduler.Boot()
@@ -1346,11 +1580,7 @@ xDTaraZ.EggIndex = {
 
 ---@return number  hatch luck multiplier: upgrades x live event
 function xDTaraZ.EggIndex.LuckMult()
-    local saved = LocalPlayer:FindFirstChild("SavedData")
-    local upgrades = saved and saved:FindFirstChild("HatchUpgrades")
-    local n = upgrades and tonumber(upgrades.Value) or 0
-    local event = tonumber(ReplicatedStorage:GetAttribute("HatchLuckEventMultiplier")) or 1
-    return (1 + n + 4 * math.floor(n / 5)) * event
+    return GameLib.LuckMult()
 end
 
 ---@return number  expected income of one hatch, luck-based fallback when odds are unreadable
@@ -1648,6 +1878,1333 @@ function xDTaraZ.EggIndex.Stop()
     table.clear(index.Waiters)
 end
 
+local CollectionService = game:GetService("CollectionService")
+
+xDTaraZ.Halloween = {
+    Enabled = false,
+    Phase = "Idle",
+    PhaseAt = 0,
+    Note = nil,
+    Token = nil,
+    Target = nil,
+    CarriedBefore = 0,
+    CarriedWas = 0,
+    FirstPickAt = 0,
+    NextCollectAt = 0,
+    LastCollectAt = 0,
+    GroundRay = nil,
+    ManualCandy = false,
+    ManualPass = nil,
+    ManualUntil = nil,
+    BuyOnce = false,
+    BuyTravel = false,
+    Purchase = nil,
+    LastBuyAt = 0,
+    PriceSeen = nil,
+    PriceFound = nil,
+    EggsBought = 0,
+    TokensEarned = 0,
+    Cycles = 0,
+    Spoiled = 0,
+    StartedAt = 0,
+    Bound = false,
+    AwaitCarried = false,
+    Conns = {},
+    Boards = {},
+    DoorAt = {},
+    PumpkinAt = {},
+    SkipUntil = {},
+    CandyState = nil,
+    CandyStateAt = 0,
+    DoorState = nil,
+    DoorStateAt = 0,
+    PumpkinState = nil,
+    PumpkinStateAt = 0,
+    RitualAt = 0,
+    RitualSeenOpen = false,
+    ZoneTries = 0,
+    ZoneRetryAt = 0,
+    PadCache = nil,
+    DepositCarried = 0,
+    DepositBankBefore = 0,
+    DepositRetried = false,
+    Busy = false,
+    FlagsBaseline = nil,
+    Finishing = false,
+    Stats = { candy = 0, knocks = 0, treats = 0 },
+}
+
+function xDTaraZ.Halloween.SetPhase(phase, note)
+    local halloween = xDTaraZ.Halloween
+    halloween.Phase, halloween.PhaseAt, halloween.Note = phase, os.clock(), note
+    xDTaraZ.Halloween.UpdateStatus()
+end
+
+function xDTaraZ.Halloween.UpdateStatus()
+    local halloween = xDTaraZ.Halloween
+    if not halloween.Enabled and not halloween.ManualCandy and not halloween.ManualPass then
+        State.Status.Halloween = "Off"
+        return
+    end
+
+    local mins = halloween.StartedAt > 0 and math.floor((os.clock() - halloween.StartedAt) / 60) or 0
+    local note = halloween.Note and (halloween.Note .. " | ") or ""
+    State.Status.Halloween = string.format("%s%s | Carried %d | Bank %s | %dm",
+        note, halloween.Phase, xDTaraZ.Halloween.Carried(), xDTaraZ.Util.Format(xDTaraZ.Halloween.Tokens()), mins)
+end
+
+---@return number  candy held while walking, from the player's replicated data
+function xDTaraZ.Halloween.Carried()
+    local noSave = LocalPlayer:FindFirstChild("NoSaveData")
+    local node = noSave and noSave:FindFirstChild("CarriedCandy")
+    return node and tonumber(node.Value) or 0
+end
+
+---@return number  event tokens banked
+function xDTaraZ.Halloween.Tokens()
+    local saved = LocalPlayer:FindFirstChild("SavedData")
+    local node = saved and saved:FindFirstChild("HalloweenCandy")
+    return node and tonumber(node.Value) or 0
+end
+
+---@return boolean|nil  false when the game says we are off the event island
+function xDTaraZ.Halloween.InZone()
+    local value = LocalPlayer:GetAttribute("InHalloweenZone")
+    if value == nil then
+        local char = xDTaraZ.Player.Char
+        value = char and char:GetAttribute("InHalloweenZone")
+    end
+    if value == nil then
+        value = Workspace:GetAttribute("InHalloweenZone")
+    end
+    return value
+end
+
+---@return boolean  the event island is in this server
+function xDTaraZ.Halloween.EventLive()
+    if #CollectionService:GetTagged("HalloweenCandyDeposit") > 0 then return true end
+    if #CollectionService:GetTagged("HalloweenCandySpawn") > 0 then return true end
+    return Workspace:FindFirstChild("HeadlessRitual") ~= nil
+end
+
+---@return Vector3  a world point for a tagged spawn, prompt or model
+function xDTaraZ.Halloween.PointOf(inst)
+    if inst:IsA("BasePart") then return inst.Position end
+    if inst:IsA("Model") then return inst:GetPivot().Position end
+    if inst:IsA("Attachment") then return inst.WorldPosition end
+
+    local holder = inst:FindFirstAncestorOfClass("BasePart") or inst:FindFirstAncestorOfClass("Model")
+    if holder then
+        return holder:IsA("BasePart") and holder.Position or holder:GetPivot().Position
+    end
+    return nil
+end
+
+---@return Vector3  candy pad position, tag first then the measured fallback
+function xDTaraZ.Halloween.PadPos()
+    local halloween = xDTaraZ.Halloween
+    if halloween.PadCache and halloween.PadCache.Parent then
+        return halloween.PadCache.Position
+    end
+
+    for _, inst in ipairs(CollectionService:GetTagged("HalloweenCandyDeposit")) do
+        local pos = xDTaraZ.Halloween.PointOf(inst)
+        if pos then
+            halloween.PadCache = inst
+            return pos
+        end
+    end
+    return Config.CandyPadPos
+end
+
+---@return CFrame  standing spot on the candy pad
+function xDTaraZ.Halloween.PadCF()
+    return CFrame.new(xDTaraZ.Halloween.PadPos() + Vector3.new(0, xDTaraZ.Halloween.StandLift(), 0))
+end
+
+---@return number  root height for the current character and mount
+function xDTaraZ.Halloween.StandLift()
+    local hum, hrp = xDTaraZ.Player.Humanoid, xDTaraZ.Player.Root
+    return math.max(Config.CandyPadLift, (hum and hum.HipHeight or 0) + (hrp and hrp.Size.Y / 2 or 0))
+end
+
+---@return CFrame  ground-relative pickup position on the pad-facing side
+function xDTaraZ.Halloween.PickupCF(pos, inst)
+    local lift = xDTaraZ.Halloween.StandLift()
+    local pad = xDTaraZ.Halloween.PadPos()
+    local dir = (pad - pos) * Vector3.new(1, 0, 1)
+    local reach = math.sqrt(math.max(0, Config.CandyPickupReach * Config.CandyPickupReach - lift * lift))
+    local spot = pos
+    if dir.Magnitude > Config.TravelStopDistance then spot += dir.Unit * math.min(reach, dir.Magnitude) end
+
+    local ray = xDTaraZ.Halloween.GroundRay
+    if not ray then
+        ray = RaycastParams.new()
+        ray.FilterType = Enum.RaycastFilterType.Exclude
+        ray.RespectCanCollide = true
+        xDTaraZ.Halloween.GroundRay = ray
+    end
+    ray.FilterDescendantsInstances = { xDTaraZ.Player.Char or Workspace, inst }
+    local hit = Workspace:Raycast(spot + Vector3.new(0, Config.GroundRayUp, 0), Vector3.new(0, -(Config.GroundRayUp + Config.GroundRayDown), 0), ray)
+    local stand = (hit and hit.Position or spot) + Vector3.new(0, lift, 0)
+    local facing = Vector3.new(pad.X, stand.Y, pad.Z)
+    return (facing - stand).Magnitude > Config.TravelStopDistance and CFrame.lookAt(stand, facing) or CFrame.new(stand)
+end
+
+---@return number  a single verified short-hop budget, not repeated teleports
+function xDTaraZ.Halloween.DirectLimit(ignoreStyle)
+    if not ignoreStyle and xDTaraZ.Halloween.ReturnHopDisabled then return 0 end
+    if not ignoreStyle and xDTaraZ.Util.Opt("CandyReturnStyle") == "Smooth ride" then return 0 end
+    local speed = xDTaraZ.Mount.Speed()
+    return math.min(Config.CandyDirectMax, speed > 0 and speed * Config.CandyDirectFactor or Config.UnmountedDirect)
+end
+
+---@return CFrame  the event portal entrance
+function xDTaraZ.Halloween.PortalCF()
+    local map = Workspace:FindFirstChild("Map")
+    local portal = map and map:FindFirstChild("Portal")
+    local outer = portal and portal:FindFirstChild("Model")
+    local inner = outer and outer:FindFirstChild("Model")
+    local part = inner and inner:FindFirstChild("Part")
+    if part and part:IsA("BasePart") then
+        return CFrame.new(part.Position + Vector3.new(0, Config.StandLift, 0))
+    end
+    if portal and portal:IsA("Model") then
+        return CFrame.new(portal:GetPivot().Position + Vector3.new(0, Config.StandLift, 0))
+    end
+    return CFrame.new(Config.PortalPos)
+end
+
+---@return Instance[]  tagged trick-or-treat houses
+function xDTaraZ.Halloween.Houses()
+    return CollectionService:GetTagged("TrickOrTreatHouseModel")
+end
+
+---@return string  door id the remotes use for this house
+function xDTaraZ.Halloween.DoorId(house, pivot)
+    local attr = house:GetAttribute("Id") or house:GetAttribute("DoorId")
+    if attr then return attr end
+    return "Door_" .. math.round(pivot.Position.X) .. "_" .. math.round(pivot.Position.Z)
+end
+
+---@return table|nil  cached GetCandyState answer
+function xDTaraZ.Halloween.AskCandy()
+    local halloween = xDTaraZ.Halloween
+    local now = os.clock()
+    if halloween.CandyStateAt > 0 and now - halloween.CandyStateAt < Config.CandyStateCache then
+        return halloween.CandyState
+    end
+
+    local remote = xDTaraZ.Net.GetCandyState
+    if not remote then return halloween.CandyState end
+    local ok, state = GameLib.Call(remote.InvokeServer, remote)
+    halloween.CandyStateAt = now
+    if ok and type(state) == "table" then halloween.CandyState = state end
+    return halloween.CandyState
+end
+
+---@return table  id -> { respawnAt, amount, respawning }
+function xDTaraZ.Halloween.SpawnState()
+    local parsed = {}
+    local state = xDTaraZ.Halloween.AskCandy()
+    if type(state) ~= "table" then return parsed end
+
+    local raw = state
+    for _, key in ipairs({ "Spawns", "Candy", "CandySpawns" }) do
+        if type(state[key]) == "table" then
+            raw = state[key]
+            break
+        end
+    end
+    if raw == state and type(state.RespawnAt) == "table" then
+        local now = workspace:GetServerTimeNow()
+        for id, at in pairs(state.RespawnAt) do
+            if type(id) == "string" and tonumber(at) and at > now then
+                parsed[id] = { respawnAt = tonumber(at), amount = 0, respawning = true }
+            end
+        end
+        for id, amount in pairs(state.Amounts or {}) do
+            if type(id) == "string" then
+                local at = tonumber(state.RespawnAt[id])
+                parsed[id] = {
+                    respawnAt = at and at > now and at or nil,
+                    amount = tonumber(amount) or 0,
+                    tier = tonumber(state.Types and state.Types[id]),
+                    respawning = at ~= nil and (at > now),
+                }
+            end
+        end
+        return parsed
+    end
+    for id, entry in pairs(raw) do
+        if type(id) == "string" and type(entry) == "table" then
+            parsed[id] = {
+                respawnAt = tonumber(entry.RespawnAt),
+                amount = tonumber(entry.Amounts) or tonumber(entry.Amount),
+                tier = tonumber(entry.Tier) or tonumber(entry.Type),
+                respawning = entry.Respawning == true,
+            }
+        end
+    end
+    return parsed
+end
+
+---@return table|nil  the game's shared Halloween config module
+function xDTaraZ.Halloween.CandyLib()
+    return GameLib.Data.Halloween
+end
+
+---@param entry { amount, tier }  parsed spawn state
+---@param dist number  distance from the candy pad
+---@return number  bankable pieces per pickup cycle; unreachable spawns score zero
+function xDTaraZ.Halloween.CandyValue(entry, dist)
+    local count = tonumber(entry.amount) or 1
+    if count ~= count or count <= 0 or count == math.huge then return 0 end
+    local returning = math.max(0, dist - Config.CandyPickupReach - Config.CandyDepositReach)
+    local direct = xDTaraZ.Halloween.DirectLimit()
+    local mode = xDTaraZ.Util.Opt("CandyMode") or "Most pieces"
+    if mode == "Fast returns" and returning > xDTaraZ.Halloween.DirectLimit(true) then return 0 end
+    local speed = xDTaraZ.Halloween.ReturnSpeed() / xDTaraZ.Halloween.ReturnFactor()
+    local types = xDTaraZ.Halloween.CandyLib()
+    local kind = types and types.CandyTypes and types.CandyTypes[tonumber(entry.tier)]
+    local debuffs = GameLib.Data["Halloween.Debuffs"]
+    local heavy = debuffs and debuffs.HeavyGravity
+    if xDTaraZ.Util.Opt("CandyAvoidSpoil") ~= false and kind and debuffs and debuffs.Enabled
+        and debuffs.AffectedModels and debuffs.AffectedModels[kind.Model] and heavy and heavy.Enabled then
+        speed /= math.max(tonumber(heavy.SpeedDivisor) or 1, 1)
+    end
+    local seconds = math.max(0, returning - direct) / math.max(speed, 1)
+    if seconds + Config.CandyDepositReserve >= Config.CandySpoilAt then return 0 end
+    if mode == "Most pieces" then return count end
+    return count / math.max(Config.CandyCooldown, seconds + Config.CandyDepositReserve)
+end
+
+---@return number  movement budget from the active mount and actual humanoid speed
+function xDTaraZ.Halloween.ReturnFactor()
+    local percent = tonumber(xDTaraZ.Util.Opt("CandyReturnSpeed"))
+    local factor = percent and percent / 100 or Config.CandyReturnFactor
+    if type(factor) ~= "number" or factor ~= factor then return 1 end
+    factor = math.clamp(factor, 1, 6)
+    local cap = xDTaraZ.Halloween.ReturnCapPercent
+    return cap and math.min(factor, cap / 100) or factor
+end
+
+---@return number  selected return speed, following the current humanoid slowdown
+function xDTaraZ.Halloween.ReturnSpeed()
+    local hum = xDTaraZ.Player.Humanoid
+    local speed = xDTaraZ.Mount.TravelSpeed()
+    if speed <= 0 then speed = Config.UnmountedPlayerSpeed end
+    return math.min(speed, hum and hum.WalkSpeed or 0) * xDTaraZ.Halloween.ReturnFactor()
+end
+
+---@return boolean  the spawn is on its respawn timer
+function xDTaraZ.Halloween.Respawning(inst, entry)
+    if entry and entry.respawning then return true end
+    local at = tonumber(inst:GetAttribute("RespawnAt")) or entry and entry.respawnAt
+    if not at then return false end
+    if at > 1e6 then return xDTaraZ.Util.ServerNow() < at end
+    return os.clock() < at
+end
+
+---@param dropsOnly boolean?  only door and pumpkin drops
+---@return table|nil  { id, pos, value } the highest value spawn
+function xDTaraZ.Halloween.NextCandy(dropsOnly)
+    local halloween = xDTaraZ.Halloween
+    if os.clock() + Config.CandyPrepAhead < halloween.NextCollectAt then return nil end
+
+    local pad = xDTaraZ.Halloween.PadPos()
+    local states = xDTaraZ.Halloween.SpawnState()
+    local known = next(states) ~= nil
+    local now = os.clock()
+
+    local best, bestScore, bestDistance = nil, 0, math.huge
+    for _, inst in ipairs(CollectionService:GetTagged("HalloweenCandySpawn")) do
+        local id = inst:GetAttribute("Id") or inst.Name
+        local pos = xDTaraZ.Halloween.PointOf(inst)
+        if not (id and pos) then continue end
+        if dropsOnly and not (id:sub(1, 9) == "DoorCandy" or id:sub(1, 11) == "PumpkinDrop") then continue end
+        if (halloween.SkipUntil[id] or 0) > now then continue end
+
+        local entry = states[id]
+        if xDTaraZ.Halloween.Respawning(inst, entry) then continue end
+        if known and not entry then continue end
+        if entry and (entry.amount or 0) <= 0 then continue end
+        if (entry and entry.amount or 1) < (tonumber(xDTaraZ.Util.Opt("CandyMinAmount")) or 1) then continue end
+
+        local dist = (pos - pad).Magnitude
+        if dist > (tonumber(xDTaraZ.Util.Opt("CandyMaxRange")) or Config.CandyRangeDefault) then continue end
+        local score = xDTaraZ.Halloween.CandyValue(entry or {}, dist)
+        if score > bestScore or (score > 0 and score == bestScore and dist < bestDistance) then
+            bestScore = score
+            bestDistance = dist
+            best = { id = id, pos = pos, value = score, instance = inst }
+        end
+    end
+    if best then best.cf = xDTaraZ.Halloween.PickupCF(best.pos, best.instance) end
+    return best
+end
+
+---@return number|nil  seconds until the next candy respawn, nil when unknown
+function xDTaraZ.Halloween.NextRespawnIn()
+    local states = xDTaraZ.Halloween.SpawnState()
+    local soonest = nil
+    for _, entry in pairs(states) do
+        if entry.respawning and entry.respawnAt then
+            local left = entry.respawnAt - workspace:GetServerTimeNow()
+            if left > 0 and (not soonest or left < soonest) then
+                soonest = left
+            end
+        end
+    end
+    return soonest
+end
+
+---@return table|nil  cached GetDoorState answer
+function xDTaraZ.Halloween.AskDoors()
+    local halloween = xDTaraZ.Halloween
+    local now = os.clock()
+    if halloween.DoorStateAt > 0 and now - halloween.DoorStateAt < Config.DoorStateCache then
+        return halloween.DoorState
+    end
+
+    local remote = xDTaraZ.Net.GetDoorState
+    if not remote then return halloween.DoorState end
+    local ok, state = GameLib.Call(remote.InvokeServer, remote)
+    halloween.DoorStateAt = now
+    if ok and type(state) == "table" then halloween.DoorState = state end
+    return halloween.DoorState
+end
+
+---@return boolean|nil  lit state of a door, nil when unknown
+function xDTaraZ.Halloween.DoorLit(id)
+    local state = xDTaraZ.Halloween.AskDoors()
+    if type(state) ~= "table" then return nil end
+
+    local raw = type(state.Doors) == "table" and state.Doors or state
+    local entry = raw[id]
+    if type(entry) == "table" then return entry.Lit == true end
+    if type(entry) == "boolean" then return entry end
+    return nil
+end
+
+---@return table|nil  { id, cf } a lit door that is off cooldown
+function xDTaraZ.Halloween.NextDoor()
+    local halloween = xDTaraZ.Halloween
+    local now = os.clock()
+    for _, house in ipairs(xDTaraZ.Halloween.Houses()) do
+        if not house:IsA("Model") then continue end
+        local pivot = house:GetPivot()
+        local id = xDTaraZ.Halloween.DoorId(house, pivot)
+        if (halloween.DoorAt[id] or 0) > now then continue end
+        if xDTaraZ.Halloween.DoorLit(id) ~= true then continue end
+
+        return {
+            id = id,
+            cf = CFrame.new(pivot.Position + Vector3.new(Config.DoorStand, Config.StandLift, Config.DoorStand)),
+        }
+    end
+    return nil
+end
+
+---@return boolean  this pumpkin was searched recently
+function xDTaraZ.Halloween.PumpkinLooted(state, id)
+    if type(state) ~= "table" then return false end
+    local raw = state.Pumpkins or state
+    local entry = raw[id]
+    if type(entry) ~= "table" then return false end
+
+    local searched = tonumber(entry.SearchedAt)
+    if not searched then return entry.Looted == true end
+    local age = searched > 1e6 and (xDTaraZ.Util.ServerNow() - searched) or (os.clock() - searched)
+    return entry.Looted == true or age < Config.PumpkinCooldown
+end
+
+---@return table|nil  { id, pos } a pumpkin that can be searched
+function xDTaraZ.Halloween.NextPumpkin()
+    local halloween = xDTaraZ.Halloween
+    local remote = xDTaraZ.Net.GetPumpkinState
+    local now = os.clock()
+    if remote and now - halloween.PumpkinStateAt >= Config.PumpkinStateCache then
+        local ok, state = GameLib.Call(remote.InvokeServer, remote)
+        halloween.PumpkinStateAt = now
+        if ok and type(state) == "table" then halloween.PumpkinState = state end
+    end
+
+    for _, inst in ipairs(CollectionService:GetTagged("PumpkinPrompt")) do
+        local id = inst:GetAttribute("Id") or (inst.Parent and inst.Parent:GetAttribute("Id")) or inst.Name
+        local pos = xDTaraZ.Halloween.PointOf(inst)
+        if not (id and pos) then continue end
+        if (halloween.PumpkinAt[id] or 0) > now then continue end
+        if xDTaraZ.Halloween.PumpkinLooted(halloween.PumpkinState, id) then continue end
+        return { id = id, pos = pos }
+    end
+    return nil
+end
+
+---@return table|nil  { model, phase, open }
+function xDTaraZ.Halloween.RitualInfo()
+    local ritual = Workspace:FindFirstChild("HeadlessRitual")
+    if not ritual then return nil end
+
+    local phase = ritual:GetAttribute("Phase")
+    local cooldownUntil = tonumber(ritual:GetAttribute("CooldownUntil")) or 0
+    return {
+        model = ritual,
+        phase = phase,
+        open = phase == "Open" and xDTaraZ.Util.ServerNow() >= cooldownUntil,
+    }
+end
+
+---@return CFrame|nil  altar stand point while the ritual is open
+function xDTaraZ.Halloween.RitualReady()
+    local halloween = xDTaraZ.Halloween
+    local info = xDTaraZ.Halloween.RitualInfo()
+    if not info then
+        State.Status.Ritual = "Ritual not found"
+        return nil
+    end
+    if not info.open then
+        State.Status.Ritual = "Ritual: " .. tostring(info.phase)
+        halloween.RitualSeenOpen = false
+        return nil
+    end
+
+    if not halloween.RitualSeenOpen then
+        halloween.RitualSeenOpen = true
+        xDTaraZ.Util.Notify("Halloween", "The ritual is open", 8)
+    end
+    if os.clock() < halloween.RitualAt then return nil end
+
+    local pivot = info.model:GetPivot()
+    return CFrame.new(pivot.Position + pivot.LookVector * Config.RitualStand + Vector3.new(0, Config.StandLift, 0))
+end
+
+---@return integer  prompts triggered at the altar
+function xDTaraZ.Halloween.RitualInteract()
+    local info = xDTaraZ.Halloween.RitualInfo()
+    if not info then return 0 end
+
+    local fired = 0
+    for _, node in ipairs(info.model:GetDescendants()) do
+        if fired >= Config.RitualPrompts then break end
+        if not (node:IsA("ProximityPrompt") and node.Enabled) then continue end
+        if xDTaraZ.Rewards.TriggerPrompt(node) then fired += 1 end
+        task.wait(Config.RitualPromptGap)
+    end
+    return fired
+end
+
+---@return boolean  any event feature wants the character right now
+function xDTaraZ.Halloween.WantsMove()
+	local opt = xDTaraZ.Util.Opt
+	return xDTaraZ.Halloween.Finishing or xDTaraZ.Halloween.BuyTravel or xDTaraZ.Halloween.Purchase ~= nil or opt("AutoCandy") == true or opt("AutoTrickOrTreat") == true or opt("AutoPumpkin") == true
+		or opt("AutoRitual") == true or xDTaraZ.Halloween.ManualCandy == true or xDTaraZ.Halloween.ManualPass ~= nil
+end
+
+---@return boolean  the scheduler job should run (toggles or a manual pass)
+function xDTaraZ.Halloween.AnyActive()
+	local opt = xDTaraZ.Util.Opt
+	return xDTaraZ.Halloween.WantsMove() or opt("AutoHalloweenEgg") == true or xDTaraZ.Halloween.BuyOnce == true
+end
+
+---@return boolean  we hold the character token
+function xDTaraZ.Halloween.Claim()
+    local halloween = xDTaraZ.Halloween
+    if halloween.Token and xDTaraZ.Tasks.Holds(halloween.Token) then return true end
+    halloween.Token = xDTaraZ.Tasks.Request("Halloween", Config.HalloweenPrio)
+    return halloween.Token ~= nil
+end
+
+function xDTaraZ.Halloween.Release()
+    local halloween = xDTaraZ.Halloween
+    local token = halloween.Token
+    halloween.Token = nil
+    if token then xDTaraZ.Tasks.Release(token) end
+end
+
+function xDTaraZ.Halloween.Reset(note)
+    local halloween = xDTaraZ.Halloween
+    halloween.Target = nil
+    halloween.DepositRetried = false
+    if halloween.CollectBankBefore ~= nil and xDTaraZ.Halloween.Carried() == 0 then halloween.CollectBankBefore = nil end
+    xDTaraZ.Halloween.Release()
+    xDTaraZ.Halloween.SetPhase("Idle", note)
+end
+
+function xDTaraZ.Halloween.BeginDeposit()
+    local halloween = xDTaraZ.Halloween
+    halloween.DepositCarried = xDTaraZ.Halloween.Carried()
+    halloween.DepositBankBefore = halloween.CollectBankBefore or xDTaraZ.Halloween.Tokens()
+    halloween.Target = { kind = "deposit", cf = xDTaraZ.Halloween.PadCF() }
+    xDTaraZ.Halloween.SetPhase("Travel")
+end
+
+---@param kind string  "candy" | "door" | "pumpkin" | "ritual"
+---@param id string
+---@param cf CFrame
+function xDTaraZ.Halloween.BeginTarget(kind, id, cf, source)
+    xDTaraZ.Halloween.Target = { kind = kind, id = id, cf = cf, source = source }
+    xDTaraZ.Halloween.SetPhase("Travel")
+end
+
+function xDTaraZ.Halloween.StepTravel()
+    local halloween = xDTaraZ.Halloween
+    local target = halloween.Target
+    if not target or not target.cf then return xDTaraZ.Halloween.Reset() end
+    if not xDTaraZ.Halloween.Claim() then return end
+
+    if target.kind == "deposit" and xDTaraZ.Halloween.Carried() > 0 then
+        halloween.Token.critical = true
+        local hrp = xDTaraZ.Player.Root
+        local delta = target.cf.Position - hrp.Position
+        local hop = math.min(xDTaraZ.Halloween.DirectLimit(), delta.Magnitude)
+        if hop > 0 and not target.hopped then
+            target.hopped = true
+            if not xDTaraZ.Tasks.Teleport(halloween.Token, hrp.CFrame + delta.Unit * hop) then
+                return xDTaraZ.Halloween.Reset("Candy return interrupted")
+            end
+        end
+        local expires = tonumber(LocalPlayer:GetAttribute("CandyExpiresAt"))
+        local remaining = expires and expires == expires and expires < math.huge
+            and expires - xDTaraZ.Util.ServerNow() or Config.CandySpoilAt - (os.clock() - halloween.FirstPickAt)
+        local reached = xDTaraZ.Tasks.Travel(halloween.Token, target.cf, xDTaraZ.Halloween.ReturnSpeed, math.max(0, remaining), {
+            noClip = true,
+            maxFlags = halloween.FlagsBaseline or xDTaraZ.Player:Flags(),
+            reach = Config.CandyDepositReach,
+            done = function() return xDTaraZ.Halloween.Carried() == 0 end,
+        })
+        if not reached then return xDTaraZ.Halloween.Reset("Candy return interrupted") end
+        return xDTaraZ.Halloween.SetPhase("Deposit")
+    end
+
+    local hrp = xDTaraZ.Player.Root
+    local loaded = target.source and target.source.instance and target.source.instance.Parent
+    if not loaded and hrp and (hrp.Position - target.cf.Position).Magnitude > Config.EventStreamDist then
+        pcall(LocalPlayer.RequestStreamAroundAsync, LocalPlayer, target.cf.Position, Config.EventStreamTimeout)
+    end
+    if not xDTaraZ.Tasks.Teleport(halloween.Token, target.cf) then
+        return xDTaraZ.Halloween.Reset("Could not move")
+    end
+    xDTaraZ.Halloween.SetPhase("Settle")
+end
+
+function xDTaraZ.Halloween.StepSettle()
+    local halloween = xDTaraZ.Halloween
+    local target = halloween.Target
+    if not target then return xDTaraZ.Halloween.Reset() end
+    local settle = target.kind == "candy" and Config.CandyPickupSettle or Config.HalloweenSettle
+    if os.clock() - halloween.PhaseAt < settle then return end
+    if not xDTaraZ.Halloween.Claim() then return end
+
+    if target.kind == "candy" then
+        if os.clock() < halloween.NextCollectAt then return end
+        local source = target.source
+        if source and source.instance and not source.instance.Parent then
+            return xDTaraZ.Halloween.Reset("Candy disappeared; selecting another spawn")
+        end
+        halloween.CandyStateAt = 0
+        local entry = xDTaraZ.Halloween.SpawnState()[target.id]
+        if entry and ((entry.amount or 0) <= 0 or entry.respawning) then
+            return xDTaraZ.Halloween.Reset("Candy is respawning; selecting another spawn")
+        end
+        if not xDTaraZ.Tasks.Holds(halloween.Token) then return xDTaraZ.Halloween.Reset("Waiting for a turn") end
+        local hrp = xDTaraZ.Player.Root
+        if source and hrp and (hrp.Position - source.pos).Magnitude > Config.CandyPickupLimit then
+            if target.repositioned then return xDTaraZ.Halloween.Reset("Could not reach the candy") end
+            target.repositioned = true
+            target.cf = CFrame.new(source.pos + Vector3.new(0, xDTaraZ.Halloween.StandLift(), 0))
+            return xDTaraZ.Halloween.SetPhase("Travel")
+        end
+        local remote = xDTaraZ.Net.CollectCandy
+        if not remote then return xDTaraZ.Halloween.Reset("Candy collecting is unavailable") end
+        halloween.CarriedBefore = xDTaraZ.Halloween.Carried()
+        halloween.CollectBankBefore = xDTaraZ.Halloween.Tokens()
+        halloween.LastCollectAt = os.clock()
+        remote:FireServer(target.id)
+        return xDTaraZ.Halloween.SetPhase("Collect")
+    end
+
+    if target.kind == "door" then
+        local remote = xDTaraZ.Net.KnockDoor
+        if remote then
+            remote:FireServer(target.id)
+            halloween.DoorAt[target.id] = os.clock() + Config.DoorCooldown
+            halloween.Stats.knocks += 1
+        end
+        return xDTaraZ.Halloween.Reset("Knocked")
+    end
+
+    if target.kind == "pumpkin" then
+        local remote = xDTaraZ.Net.SearchPumpkin
+        if remote then
+            remote:FireServer(target.id)
+            halloween.PumpkinAt[target.id] = os.clock() + Config.PumpkinCooldown
+        end
+        return xDTaraZ.Halloween.Reset("Searched")
+    end
+
+    if target.kind == "ritual" then
+        local fired = xDTaraZ.Halloween.RitualInteract()
+        halloween.RitualAt = os.clock() + Config.RitualRetry
+        return xDTaraZ.Halloween.Reset(fired > 0 and "Ritual visited" or "Ritual is not ready")
+    end
+
+    if target.kind == "deposit" then
+        return xDTaraZ.Halloween.SetPhase("Deposit")
+    end
+
+    if target.kind == "shop" then return xDTaraZ.Halloween.BuyAtShop() end
+
+    if target.kind == "portal" then
+        xDTaraZ.Halloween.PortalTries = (xDTaraZ.Halloween.PortalTries or 0) + 1
+        task.spawn(function()
+            local tries = xDTaraZ.Halloween.PortalTries
+            local epoch = xDTaraZ.Player.Epoch
+            for attempt = 1, 6 do
+                if not State.Alive or State.Unloading or epoch ~= xDTaraZ.Player.Epoch then return end
+                if not xDTaraZ.Halloween.WantsMove() then return end
+                local portal = Workspace:FindFirstChild("Map")
+                portal = portal and portal:FindFirstChild("Portal")
+                if not (portal and xDTaraZ.Player:IsAlive()) then break end
+                if xDTaraZ.Halloween.PortalTries ~= tries then return end
+
+                local fired = false
+                for _, prompt in ipairs(portal:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        fired = pcall(fireproximityprompt, prompt) or fired
+                    end
+                end
+                if LocalPlayer:GetAttribute("InHalloweenZone") == true then return end
+                task.wait(0.4)
+            end
+        end)
+        return xDTaraZ.Halloween.Reset("Entering the event")
+    end
+
+    xDTaraZ.Halloween.Reset("Entering the event")
+end
+
+function xDTaraZ.Halloween.StepCollect()
+    local halloween = xDTaraZ.Halloween
+    local target = halloween.Target
+    if not target then return xDTaraZ.Halloween.Reset() end
+
+    local carried = xDTaraZ.Halloween.Carried()
+    local banked = halloween.CollectBankBefore and xDTaraZ.Halloween.Tokens() - halloween.CollectBankBefore or 0
+    if carried == 0 and banked > 0 then
+        halloween.Stats.candy += banked
+        halloween.NextCollectAt = halloween.LastCollectAt + Config.CandyCooldown
+        halloween.CandyStateAt = 0
+        halloween.DepositBankBefore = halloween.CollectBankBefore
+        return xDTaraZ.Halloween.SetPhase("Deposit")
+    end
+    if carried > halloween.CarriedBefore then
+        if halloween.FirstPickAt == 0 then halloween.FirstPickAt = os.clock() end
+        halloween.Stats.candy += carried - halloween.CarriedBefore
+        halloween.NextCollectAt = halloween.LastCollectAt + Config.CandyCooldown
+        halloween.CandyStateAt = 0
+        return xDTaraZ.Halloween.BeginDeposit()
+    end
+
+    if halloween.FirstPickAt > 0 and carried > 0 and os.clock() - halloween.FirstPickAt >= Config.CandySpoilAt then
+        return xDTaraZ.Halloween.BeginDeposit()
+    end
+
+    if os.clock() - halloween.PhaseAt > Config.CandyCollectTimeout then
+        halloween.SkipUntil[target.id] = os.clock() + Config.CandySkipSec
+        halloween.CandyStateAt = 0
+        return xDTaraZ.Halloween.Reset("Candy did not answer")
+    end
+end
+
+function xDTaraZ.Halloween.StepDeposit()
+    local halloween = xDTaraZ.Halloween
+
+    if xDTaraZ.Halloween.Carried() == 0 then
+        local banked = xDTaraZ.Halloween.Tokens() - halloween.DepositBankBefore
+        if banked <= 0 then
+            if os.clock() - halloween.PhaseAt < Config.CandyDepositTimeout then return end
+            halloween.Spoiled += 1
+            halloween.FirstPickAt = 0
+            return xDTaraZ.Halloween.Reset("Candy cleared without a confirmed deposit")
+        end
+        halloween.TokensEarned += banked
+        halloween.Cycles += 1
+        halloween.FirstPickAt = 0
+        halloween.DepositDoneAt = os.clock()
+        if halloween.ManualCandy then halloween.ManualCandy = false end
+        return xDTaraZ.Halloween.Reset("Cashed in " .. banked)
+    end
+
+    if os.clock() - halloween.PhaseAt <= Config.CandyDepositTimeout then return end
+    if not halloween.DepositRetried then
+        halloween.DepositRetried = true
+        if xDTaraZ.Halloween.Claim() and xDTaraZ.Tasks.Teleport(halloween.Token, xDTaraZ.Halloween.PadCF()) then
+            return xDTaraZ.Halloween.SetPhase("Deposit")
+        end
+    end
+    xDTaraZ.Halloween.Reset("Could not reach the candy pad")
+end
+
+function xDTaraZ.Halloween.StepIdle()
+    local halloween = xDTaraZ.Halloween
+    local opt = xDTaraZ.Util.Opt
+    local carried = xDTaraZ.Halloween.Carried()
+
+    local spoiling = carried > 0 and halloween.FirstPickAt > 0 and os.clock() - halloween.FirstPickAt >= Config.CandySpoilAt
+    if carried > 0 and (carried >= Config.CandyCarryGoal or spoiling) then
+        return xDTaraZ.Halloween.BeginDeposit()
+    end
+
+    local fullCandy = opt("AutoCandy") == true or halloween.ManualCandy
+    local dropsOnly = not fullCandy and (opt("AutoTrickOrTreat") == true or opt("AutoPumpkin") == true or halloween.ManualPass ~= nil)
+    if fullCandy or dropsOnly then
+        if os.clock() + Config.CandyPrepAhead >= halloween.NextCollectAt then
+            if not xDTaraZ.Halloween.Claim() then return end
+            if xDTaraZ.Util.Opt("CandyAutoMount") ~= false then xDTaraZ.Mount.Ensure(halloween.Token) end
+        end
+        local candy = xDTaraZ.Halloween.NextCandy(dropsOnly)
+        if candy then
+            return xDTaraZ.Halloween.BeginTarget("candy", candy.id,
+                candy.cf, candy)
+        end
+        if carried > 0 then
+            local waitLeft = xDTaraZ.Halloween.NextRespawnIn()
+            local spoilLeft = halloween.FirstPickAt > 0 and Config.CandySpoilAt - (os.clock() - halloween.FirstPickAt) or Config.CandySpoilAt
+            if not (waitLeft and waitLeft < spoilLeft - 2) then
+                return xDTaraZ.Halloween.BeginDeposit()
+            end
+        end
+        if halloween.ManualCandy then
+            if carried == 0 then
+                halloween.ManualCandy = false
+            else
+                return xDTaraZ.Halloween.BeginDeposit()
+            end
+        end
+    end
+
+    if opt("AutoTrickOrTreat") == true or halloween.ManualPass == "doors" then
+        local door = xDTaraZ.Halloween.NextDoor()
+        if door then return xDTaraZ.Halloween.BeginTarget("door", door.id, door.cf) end
+    end
+
+    if opt("AutoPumpkin") == true or halloween.ManualPass == "pumpkins" then
+        local pumpkin = xDTaraZ.Halloween.NextPumpkin()
+        if pumpkin then
+            return xDTaraZ.Halloween.BeginTarget("pumpkin", pumpkin.id,
+                CFrame.new(pumpkin.pos + Vector3.new(0, Config.StandLift, 0)))
+        end
+    end
+
+    if opt("AutoRitual") == true then
+        local altar = xDTaraZ.Halloween.RitualReady()
+        if altar then return xDTaraZ.Halloween.BeginTarget("ritual", "ritual", altar) end
+    end
+
+    if halloween.ManualPass then halloween.ManualPass = nil end
+    xDTaraZ.Halloween.Release()
+    local cooldownLeft = halloween.NextCollectAt - os.clock()
+    if cooldownLeft > 0 then
+        return xDTaraZ.Halloween.SetPhase("Idle", string.format("Pickup cooldown %.0fs", cooldownLeft))
+    end
+    xDTaraZ.Halloween.SetPhase("Idle", "Waiting for candy to respawn")
+end
+
+function xDTaraZ.Halloween.StepZone()
+    local halloween = xDTaraZ.Halloween
+    local now = os.clock()
+    if now < halloween.ZoneRetryAt then return end
+
+    halloween.ZoneTries += 1
+    if halloween.ZoneTries > Config.HalloweenZoneTries then
+        return xDTaraZ.Halloween.LeaveZone()
+    end
+
+    halloween.ZoneRetryAt = now + Config.HalloweenZoneGap
+    halloween.Target = { kind = "portal", cf = xDTaraZ.Halloween.PortalCF() }
+    xDTaraZ.Halloween.SetPhase("Travel")
+end
+
+function xDTaraZ.Halloween.LeaveZone()
+    xDTaraZ.Halloween.StopMovement("Left the event island, event farming stopped")
+end
+
+function xDTaraZ.Halloween.StopMovement(note)
+    local halloween = xDTaraZ.Halloween
+    halloween.ManualCandy, halloween.ManualPass, halloween.ManualUntil = false, nil, nil
+    xDTaraZ.Halloween.Reset(note)
+
+    for _, idx in ipairs({ "AutoCandy", "AutoTrickOrTreat", "AutoPumpkin", "AutoRitual" }) do
+        table.insert(State.PendingToggleOff, idx)
+    end
+    table.insert(State.PendingNotify, { "Halloween", note })
+end
+
+function xDTaraZ.Halloween.RecoverMovement()
+    local halloween = xDTaraZ.Halloween
+    local percent = xDTaraZ.Halloween.ReturnFactor() * 100
+    halloween.ReturnCapPercent = math.max(100, math.min(200, percent * 0.75))
+    halloween.ReturnHopDisabled = true
+    halloween.FlagsBaseline = xDTaraZ.Player:Flags()
+    halloween.RecoveryUntil = os.clock() + (xDTaraZ.Halloween.Carried() > 0 and 0.15 or 1)
+    halloween.CandyStateAt = 0
+    xDTaraZ.Halloween.Reset("Retrying at " .. math.floor(halloween.ReturnCapPercent) .. "%")
+    if xDTaraZ.Halloween.Carried() > 0 then xDTaraZ.Halloween.BeginDeposit() end
+end
+
+---@return number|nil  egg token price read from the game data, nil when not found
+function xDTaraZ.Halloween.KnownPrice()
+    local halloween = xDTaraZ.Halloween
+    if halloween.PriceSeen then return halloween.PriceSeen end
+    local lib = xDTaraZ.Halloween.CandyLib()
+    local eggs = lib and lib.Eggs
+    local egg = eggs and eggs["Halloween Egg"]
+    halloween.PriceFound = egg and tonumber(egg.Price) or nil
+    return halloween.PriceFound
+end
+
+---@return Instance|nil, Vector3|nil  a real shop anchor from the game's own tags
+function xDTaraZ.Halloween.ShopAnchor()
+    for _, tag in ipairs({ "HalloweenShopGuy", "HalloweenShopPrompt" }) do
+        for _, inst in ipairs(CollectionService:GetTagged(tag)) do
+            local pos = xDTaraZ.Halloween.PointOf(inst)
+            if pos then return inst, pos end
+        end
+    end
+    return nil, nil
+end
+
+function xDTaraZ.Halloween.BuyBlocked(reason)
+    xDTaraZ.Halloween.BuyOnce, xDTaraZ.Halloween.BuyTravel = false, false
+    State.Status.HalloweenEgg = reason
+end
+
+---@return boolean  enough unreserved tokens, a known price and an active event
+function xDTaraZ.Halloween.CanBuy()
+    local price = xDTaraZ.Halloween.KnownPrice()
+    if not price or price <= 0 then
+        xDTaraZ.Halloween.BuyBlocked("Egg price is unavailable")
+        return false
+    end
+    local keep = math.max(0, tonumber(xDTaraZ.Util.Opt("HalloweenKeepTokens")) or 0)
+    local tokens = xDTaraZ.Halloween.Tokens()
+    if tokens < price + keep then
+        xDTaraZ.Halloween.BuyBlocked("Saving " .. xDTaraZ.Util.Format(tokens) .. " / " .. xDTaraZ.Util.Format(price + keep) .. " tokens")
+        return false
+    end
+    local event = GameLib.Svc and GameLib.Svc.HalloweenEvent
+    if event and type(event.IsLive) == "function" then
+        local ok, live = GameLib.Call(event.IsLive)
+        if not ok or live ~= true then
+            xDTaraZ.Halloween.BuyBlocked("Halloween egg shop is closed")
+            return false
+        end
+    end
+    local limit = tonumber(xDTaraZ.Util.Opt("HalloweenBuyLimit")) or 0
+    if not xDTaraZ.Halloween.BuyOnce and limit > 0 and xDTaraZ.Halloween.EggsBought >= limit then
+        xDTaraZ.Halloween.BuyBlocked("Egg purchase limit reached")
+        return false
+    end
+    return true
+end
+
+function xDTaraZ.Halloween.BuyStep()
+    local halloween = xDTaraZ.Halloween
+    local opt = xDTaraZ.Util.Opt
+    if not (opt("AutoHalloweenEgg") == true or halloween.BuyOnce) then return end
+    if halloween.Purchase or halloween.Phase ~= "Idle" or xDTaraZ.Tasks.Carrying() then return end
+    if os.clock() - halloween.LastBuyAt < Config.HalloweenEggGap then return end
+
+    local remote = xDTaraZ.Net.BuyHalloweenEgg
+    if not remote then
+        State.Status.HalloweenEgg = "Egg shop is unavailable"
+        return
+    end
+
+    if not xDTaraZ.Halloween.CanBuy() then return end
+    halloween.BuyTravel = true
+    if xDTaraZ.Halloween.InZone() ~= true then return end
+    local inst, pos = xDTaraZ.Halloween.ShopAnchor()
+    if not pos or not xDTaraZ.Halloween.Claim() then return end
+    local hrp = xDTaraZ.Player.Root
+    halloween.ShopHome = { hrp.CFrame, xDTaraZ.Player.Epoch }
+    State.Status.HalloweenEgg = "Going to the egg shop"
+    local cf = xDTaraZ.Halloween.PickupCF(pos, inst)
+    xDTaraZ.Halloween.BeginTarget("shop", nil, cf, { instance = inst, pos = pos })
+end
+
+function xDTaraZ.Halloween.BuyAtShop()
+    local halloween = xDTaraZ.Halloween
+    if not xDTaraZ.Halloween.CanBuy() then return xDTaraZ.Halloween.FinishShop() end
+    local target = halloween.Target
+    local hrp = xDTaraZ.Player.Root
+    if not target or not target.source or not hrp then return xDTaraZ.Halloween.FinishShop("Could not reach the egg shop") end
+    local distance = xDTaraZ.Util.Flat(hrp.Position, target.source.pos)
+    if distance > Config.HalloweenShopRange then
+        target.cf = CFrame.new(target.source.pos + Vector3.new(0, xDTaraZ.Halloween.StandLift(), 0))
+        return xDTaraZ.Halloween.SetPhase("Travel")
+    end
+    local before = {}
+    for _, row in ipairs(xDTaraZ.Hatch.EggTools()) do before[row[1]] = true end
+    local tokens = xDTaraZ.Halloween.Tokens()
+    local price = xDTaraZ.Halloween.KnownPrice()
+    local remote = xDTaraZ.Net.BuyHalloweenEgg
+    halloween.LastBuyAt = os.clock()
+    local ok, bought = GameLib.Call(remote.InvokeServer, remote, "Halloween Egg")
+    halloween.BuyOnce = false
+    if not ok or bought ~= true then
+        halloween.LastBuyAt = os.clock() + Config.HalloweenShopRetry
+        return xDTaraZ.Halloween.FinishShop(ok and "Egg shop refused the purchase; retrying later" or "Egg shop did not answer")
+    end
+    halloween.Purchase = { before = before, tokens = tokens, price = price, at = os.clock(), epoch = xDTaraZ.Player.Epoch }
+    State.Status.HalloweenEgg = "Confirming the egg purchase"
+    xDTaraZ.Halloween.SetPhase("Purchase")
+end
+
+function xDTaraZ.Halloween.StepPurchase()
+    local halloween = xDTaraZ.Halloween
+    local purchase = halloween.Purchase
+    if not purchase then return xDTaraZ.Halloween.FinishShop() end
+    local tool
+    for _, row in ipairs(xDTaraZ.Hatch.EggTools()) do
+        if row[2] == "Halloween Egg" and not purchase.before[row[1]] then tool = row[1]; break end
+    end
+    local spent = purchase.tokens - xDTaraZ.Halloween.Tokens()
+    if spent < purchase.price or not tool then
+        if os.clock() - purchase.at < Config.HalloweenPurchaseTimeout then return end
+        return xDTaraZ.Halloween.FinishShop("Purchase not confirmed; check the egg inventory")
+    end
+    halloween.EggsBought += 1
+    local note = "Bought " .. halloween.EggsBought .. " eggs"
+    if xDTaraZ.Util.Opt("HalloweenAutoHatch") ~= false and purchase.epoch == xDTaraZ.Player.Epoch and xDTaraZ.Halloween.Claim() then
+        halloween.Token.critical = true
+        local key = xDTaraZ.Hatch.PlantTool(halloween.Token, tool)
+        if key then
+            xDTaraZ.Hatch.Purchased[key] = true
+            local hatched = xDTaraZ.Tasks.Await(halloween.Token, function()
+                if xDTaraZ.Hatch.Confirmed[key] then return true end
+                local egg = State.PlotEggs[key]
+                local left = egg and xDTaraZ.Hatch.Left(egg)
+                if left and left <= 0 then xDTaraZ.Hatch.HatchNow(key) end
+                return false
+            end, Config.HalloweenPurchaseTimeout)
+            note = hatched and "Bought and hatched the Halloween egg" or "Egg placed; waiting to hatch"
+        else
+            note = "Bought egg; no free plot space, kept in inventory"
+        end
+    end
+    xDTaraZ.Halloween.FinishShop(note)
+end
+
+function xDTaraZ.Halloween.FinishShop(note)
+    local halloween = xDTaraZ.Halloween
+    local home, token = halloween.ShopHome, halloween.Token
+    if home and token and home[2] == xDTaraZ.Player.Epoch and not xDTaraZ.Tasks.Carrying() then
+        xDTaraZ.Tasks.Teleport(token, home[1])
+    end
+    halloween.ShopHome, halloween.Purchase, halloween.BuyTravel = nil, nil, false
+    if note then State.Status.HalloweenEgg = note end
+    xDTaraZ.Halloween.Reset()
+end
+
+function xDTaraZ.Halloween.StepOnce()
+    local halloween = xDTaraZ.Halloween
+    xDTaraZ.Halloween.Bind()
+    if halloween.FlagsBaseline and xDTaraZ.Player:Flags() > halloween.FlagsBaseline then
+        return xDTaraZ.Halloween.RecoverMovement()
+    end
+    if os.clock() < (halloween.RecoveryUntil or 0) then return end
+    if not xDTaraZ.Player:IsAlive() then return xDTaraZ.Halloween.Reset("Waiting for respawn") end
+    if halloween.Finishing and halloween.Phase == "Idle" and xDTaraZ.Halloween.Carried() == 0 then
+        return xDTaraZ.Halloween.Stop()
+    end
+    if halloween.Token and not xDTaraZ.Tasks.Holds(halloween.Token) then
+        return xDTaraZ.Halloween.Reset("Waiting for a turn")
+    end
+
+    xDTaraZ.Halloween.BuyStep()
+
+    if halloween.ManualUntil and os.clock() > halloween.ManualUntil then
+        halloween.ManualCandy, halloween.ManualPass, halloween.ManualUntil = false, nil, nil
+    end
+    if not xDTaraZ.Halloween.WantsMove() then
+        if halloween.Phase ~= "Idle" then xDTaraZ.Halloween.Reset() end
+        return
+    end
+
+    if halloween.Phase ~= "Idle" and os.clock() - halloween.PhaseAt > Config.HalloweenPhaseBudget then
+        xDTaraZ.Halloween.Reset("Restarting")
+    end
+
+    local phase = halloween.Phase
+    if phase == "Purchase" then return xDTaraZ.Halloween.StepPurchase() end
+    if phase == "Travel" then return xDTaraZ.Halloween.StepTravel() end
+    if phase == "Settle" then return xDTaraZ.Halloween.StepSettle() end
+    if phase == "Collect" then return xDTaraZ.Halloween.StepCollect() end
+    if phase == "Deposit" then return xDTaraZ.Halloween.StepDeposit() end
+
+    if xDTaraZ.Halloween.InZone() ~= true then return xDTaraZ.Halloween.StepZone() end
+    halloween.ZoneTries = 0
+    return xDTaraZ.Halloween.StepIdle()
+end
+
+function xDTaraZ.Halloween.Step()
+    local halloween = xDTaraZ.Halloween
+    if halloween.Busy then return end
+    halloween.Busy = true
+    local ok, err = pcall(xDTaraZ.Halloween.StepOnce)
+    halloween.Busy = false
+    if not ok then
+        xDTaraZ.Halloween.Reset("Restarting after an error")
+        error(err, 0)
+    end
+end
+
+function xDTaraZ.Halloween.OnCarried(value)
+    local halloween = xDTaraZ.Halloween
+    if value > 0 and halloween.CarriedWas == 0 then
+        halloween.FirstPickAt = os.clock()
+    elseif value == 0 and halloween.CarriedWas > 0 and not (halloween.Target and halloween.Target.kind == "deposit") then
+        if os.clock() - (halloween.DepositDoneAt or 0) > 2 then
+            halloween.FirstPickAt = 0
+            halloween.Spoiled += 1
+        end
+    end
+    halloween.CarriedWas = value
+    xDTaraZ.Halloween.UpdateStatus()
+end
+
+function xDTaraZ.Halloween.Bind()
+    local halloween = xDTaraZ.Halloween
+    if halloween.Bound or halloween.AwaitCarried then return end
+    local noSave = LocalPlayer:FindFirstChild("NoSaveData")
+    if not noSave then return end
+
+    local carried = noSave:FindFirstChild("CarriedCandy")
+    if not carried then
+        halloween.AwaitCarried = true
+        table.insert(halloween.Conns, noSave.ChildAdded:Connect(function(child)
+            if child.Name == "CarriedCandy" then
+                halloween.Bound, halloween.AwaitCarried = false, false
+            end
+        end))
+        return
+    end
+
+    halloween.Bound = true
+    halloween.CarriedWas = tonumber(carried.Value) or 0
+    table.insert(halloween.Conns, carried.Changed:Connect(xDTaraZ.Halloween.OnCarried))
+
+    local reply = GameLib.Remote("DoorKnocked")
+    if reply then
+        table.insert(halloween.Conns, reply.OnClientEvent:Connect(function(id, isTreat, amount)
+            if isTreat then
+                halloween.Stats.treats += 1
+                table.insert(State.PendingNotify, { "Trick-or-Treat", "Treat: " .. tostring(amount) .. " candy dropped" })
+            end
+        end))
+    end
+
+    local ritual = Workspace:FindFirstChild("HeadlessRitual")
+    if ritual then
+        table.insert(halloween.Conns, ritual:GetAttributeChangedSignal("Phase"):Connect(function()
+            if ritual:GetAttribute("Phase") ~= "Open" then halloween.RitualSeenOpen = false end
+        end))
+    end
+end
+
+function xDTaraZ.Halloween.CandyNow()
+    xDTaraZ.Halloween.Start()
+    xDTaraZ.Halloween.ManualCandy = true
+    xDTaraZ.Halloween.ManualUntil = os.clock() + Config.HalloweenManualTimeout
+end
+
+function xDTaraZ.Halloween.KnockNow()
+    xDTaraZ.Halloween.Start()
+    xDTaraZ.Halloween.ManualPass = "doors"
+    xDTaraZ.Halloween.ManualUntil = os.clock() + Config.HalloweenManualTimeout
+end
+
+function xDTaraZ.Halloween.SearchNow()
+    xDTaraZ.Halloween.Start()
+    xDTaraZ.Halloween.ManualPass = "pumpkins"
+    xDTaraZ.Halloween.ManualUntil = os.clock() + Config.HalloweenManualTimeout
+end
+
+function xDTaraZ.Halloween.BuyNow()
+    xDTaraZ.Halloween.Start()
+    xDTaraZ.Halloween.BuyOnce = true
+end
+
+function xDTaraZ.Halloween.ExitNow()
+    local halloween = xDTaraZ.Halloween
+    halloween.ManualCandy, halloween.ManualPass, halloween.ManualUntil, halloween.BuyOnce = false, nil, nil, false
+    xDTaraZ.Halloween.Reset("Stopped")
+end
+
+---@return string, Color3  short label and colour for a candy spawn id
+function xDTaraZ.Halloween.TierOf(id)
+    if id:sub(1, 9) == "DoorCandy" then return "Door Candy", Config.RarityColors.Legendary end
+    if id:sub(1, 11) == "PumpkinDrop" then return "Pumpkin Drop", Config.RarityColors.Legendary end
+    local tier = id:match("^Candy(%d)_")
+    if tier == "1" then return "Candy", Config.RarityColors.Common end
+    if tier == "2" then return "Rare Candy", Config.RarityColors.Rare end
+    if tier == "3" then return "Epic Candy", Config.RarityColors.Epic end
+    return "Candy", Color3.new(1, 1, 1)
+end
+
+function xDTaraZ.Halloween.EspStep()
+    if not State.Alive or not xDTaraZ.Util.Opt("HalloweenEsp") then return end
+    xDTaraZ.Halloween.Bind()
+
+    local halloween = xDTaraZ.Halloween
+    local esp = xDTaraZ.Esp
+    local hrp = xDTaraZ.Player.Root
+    local range = xDTaraZ.Platform.Mobile and Config.EspRangeMobile or Config.EspRange
+    local kinds = xDTaraZ.Util.Opt("HalloweenEspTypes")
+    if type(kinds) ~= "table" or not next(kinds) then
+        kinds = { Candy = true, Doors = true, Pumpkins = true, Altar = true }
+    end
+
+    local seen = {}
+    local function Show(key, pos, text, color)
+        local dist = hrp and (pos - hrp.Position).Magnitude or 0
+        if dist > range then return end
+        seen[key] = true
+
+        local slot = halloween.Boards[key]
+        if not slot or not slot.board.Parent then
+            slot = esp.Take()
+            halloween.Boards[key] = slot
+        end
+        slot.anchor.WorldPosition = pos
+        slot.board.MaxDistance = range
+        slot.board.Enabled = true
+        slot.label.TextColor3 = color
+        slot.label.Text = type(text) == "function" and text(math.floor(dist)) or text
+    end
+
+    if kinds.Candy then
+        local states = xDTaraZ.Halloween.SpawnState()
+        for _, inst in ipairs(CollectionService:GetTagged("HalloweenCandySpawn")) do
+            local id = inst:GetAttribute("Id") or inst.Name
+            local pos = xDTaraZ.Halloween.PointOf(inst)
+            if id and pos and not xDTaraZ.Halloween.Respawning(inst, states[id]) then
+                local label, color = xDTaraZ.Halloween.TierOf(id)
+                local amount = states[id] and states[id].amount
+                Show("candy:" .. id, pos, function(dist)
+                    return string.format("%s%s | %dm", label, amount and (" " .. amount) or "", dist)
+                end, color)
+            end
+        end
+    end
+
+    if kinds.Doors then
+        for _, house in ipairs(xDTaraZ.Halloween.Houses()) do
+            if not house:IsA("Model") then continue end
+            local pivot = house:GetPivot()
+            local id = xDTaraZ.Halloween.DoorId(house, pivot)
+            local lit = xDTaraZ.Halloween.DoorLit(id)
+            Show("door:" .. id, pivot.Position,
+                lit == true and "Door Lit" or lit == false and "Door Dark" or "Door",
+                lit == true and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(170, 170, 170))
+        end
+    end
+
+    if kinds.Pumpkins then
+        for _, inst in ipairs(CollectionService:GetTagged("PumpkinPrompt")) do
+            local pos = xDTaraZ.Halloween.PointOf(inst)
+            if pos then Show("pumpkin:" .. tostring(inst), pos, "Pumpkin", Color3.fromRGB(255, 140, 40)) end
+        end
+    end
+
+    if kinds.Altar then
+        local info = xDTaraZ.Halloween.RitualInfo()
+        if info then
+            Show("altar", info.model:GetPivot().Position,
+                "Ritual Altar" .. (info.phase and (" (" .. tostring(info.phase) .. ")") or ""),
+                Color3.fromRGB(190, 80, 255))
+        end
+        Show("pad", xDTaraZ.Halloween.PadPos(), "Candy Pad", Config.RarityColors.Legendary)
+    end
+
+    for key in pairs(halloween.Boards) do
+        if not seen[key] then esp.Disown(halloween.Boards, key) end
+    end
+end
+
+function xDTaraZ.Halloween.ClearEsp()
+    local halloween = xDTaraZ.Halloween
+    for key in pairs(halloween.Boards) do
+        xDTaraZ.Esp.Disown(halloween.Boards, key)
+    end
+end
+
+---@return table<string, function>  label -> CFrame getter for the teleport tab
+function xDTaraZ.Halloween.Places()
+    local places = {}
+    if not xDTaraZ.Halloween.EventLive() then return places end
+
+    places["Event: Candy Pad"] = function()
+        return CFrame.new(xDTaraZ.Halloween.PadPos() + Vector3.new(0, Config.CandyPadLift, 0))
+    end
+    places["Event: Portal"] = xDTaraZ.Halloween.PortalCF
+
+    for index, house in ipairs(xDTaraZ.Halloween.Houses()) do
+        if house:IsA("Model") then
+            local pivot = house:GetPivot()
+            places["Event: House " .. index] = function()
+                return CFrame.new(pivot.Position + Vector3.new(Config.DoorStand, Config.StandLift, Config.DoorStand))
+            end
+        end
+    end
+
+    local ritual = Workspace:FindFirstChild("HeadlessRitual")
+    if ritual then
+        places["Event: Ritual Altar"] = function()
+            local pivot = ritual:GetPivot()
+            return CFrame.new(pivot.Position + Vector3.new(0, Config.StandLift, 0))
+        end
+    end
+    return places
+end
+
+function xDTaraZ.Halloween.Start()
+    local halloween = xDTaraZ.Halloween
+    halloween.Finishing = false
+    if halloween.Enabled then return end
+    halloween.FlagsBaseline = xDTaraZ.Player:Flags()
+    halloween.Enabled = true
+    halloween.ZoneTries = 0
+    halloween.ZoneRetryAt = 0
+    if halloween.StartedAt == 0 then halloween.StartedAt = os.clock() end
+    xDTaraZ.Halloween.Bind()
+    xDTaraZ.Halloween.SetPhase("Idle")
+end
+
+function xDTaraZ.Halloween.Stop()
+    local halloween = xDTaraZ.Halloween
+    halloween.Enabled = false
+    halloween.ManualCandy, halloween.ManualPass, halloween.ManualUntil, halloween.BuyOnce = false, nil, nil, false
+    if State.Alive and not State.Unloading and halloween.Purchase then return end
+    halloween.Purchase, halloween.BuyTravel, halloween.ShopHome = nil, false, nil
+    if State.Alive and not State.Unloading and xDTaraZ.Halloween.Carried() > 0 then
+        halloween.Finishing = true
+        if not (halloween.Target and halloween.Target.kind == "deposit") then xDTaraZ.Halloween.BeginDeposit() end
+        return
+    end
+    halloween.Finishing = false
+    xDTaraZ.Halloween.Reset("Off")
+
+    for _, conn in ipairs(halloween.Conns) do
+        conn:Disconnect()
+    end
+    table.clear(halloween.Conns)
+    halloween.Bound = false
+    halloween.AwaitCarried = false
+end
+
 xDTaraZ.Delivery = {}
 
 ---@return "Plot"|"Direct"|"Drop", number  mode, trip studs
@@ -1656,7 +3213,7 @@ function xDTaraZ.Delivery.Mode(entry)
     if not bp or not entry or not entry.pos then return "Drop", math.huge end
 
     local inside = xDTaraZ.Geo.EdgeInside(bp, entry.pos)
-    if xDTaraZ.Util.Flat(inside, entry.pos) <= xDTaraZ.Config.PickupReach then return "Plot", 0 end
+    if (inside - entry.pos).Magnitude <= xDTaraZ.Config.PickupReach then return "Plot", 0 end
 
     local trip = xDTaraZ.Geo.Trip(bp, xDTaraZ.Geo.StandPoint(bp, entry.pos))
     local opts = xDTaraZ.Options
@@ -1696,6 +3253,7 @@ function xDTaraZ.Delivery.Pickup(token, guid, standPos)
     local remote = xDTaraZ.GameLib.Remote("EggPickup")
     local hrp = xDTaraZ.Player.Root
     if not remote or not hrp then return false, "missing" end
+    local flags = xDTaraZ.Player:Flags()
 
     if (hrp.Position - standPos).Magnitude > 1 then
         if not xDTaraZ.Tasks.Teleport(token, CFrame.new(standPos)) then return false, "aborted" end
@@ -1703,8 +3261,10 @@ function xDTaraZ.Delivery.Pickup(token, guid, standPos)
     end
 
     local deadline = os.clock() + cfg.PickupTotalTimeout
+    local retried = false
     repeat
-        if token.dead or token.epoch ~= xDTaraZ.Player.Epoch then return false, "aborted" end
+        if not xDTaraZ.Tasks.Holds(token) or xDTaraZ.Guard.Tripped or xDTaraZ.Player:Flags() > flags then return false, "aborted" end
+        xDTaraZ.EggIndex.Expect(guid)
         remote:FireServer(guid)
         local kind, text = xDTaraZ.EggIndex.WaitReply(guid, cfg.PickupReplyTimeout)
 
@@ -1715,8 +3275,12 @@ function xDTaraZ.Delivery.Pickup(token, guid, standPos)
             xDTaraZ.EggIndex.MarkGone(guid)
             return false, "gone"
         end
-        if kind == "Refused" and not tostring(text or ""):find("studs") then return false, "refused" end
-        if kind == "Refused" then task.wait(cfg.PickupRetryStep) end
+        if kind == "Refused" then
+            local distanceLag = tostring(text or ""):find("studs", 1, true) ~= nil
+            if retried or not distanceLag or xDTaraZ.Player:Flags() > flags then return false, "refused" end
+            retried = true
+            if not xDTaraZ.Delivery.Sleep(token, cfg.PickupAckWait) then return false, "aborted" end
+        end
     until os.clock() >= deadline
     return false, "timeout"
 end
@@ -1730,6 +3294,7 @@ end
 function xDTaraZ.Delivery.StepHome(token, bp)
     local hrp = xDTaraZ.Player.Root
     if not hrp then return false end
+    xDTaraZ.EggIndex.Expect("*carry")
     return xDTaraZ.Tasks.Teleport(token, CFrame.new(xDTaraZ.Geo.EdgeInside(bp, hrp.Position)))
 end
 
@@ -1778,7 +3343,10 @@ end
 
 function xDTaraZ.Delivery.WaitLanded(token, drop)
     local landAt = drop.dropEndsAt + xDTaraZ.Config.DropEndsSlack
-    local ok = xDTaraZ.Tasks.Await(token, function() return xDTaraZ.Util.ServerNow() >= landAt end, xDTaraZ.Config.DropAppearTimeout)
+    local remaining = landAt - xDTaraZ.Util.ServerNow()
+    if remaining ~= remaining or remaining > xDTaraZ.Config.DropLandMax then return false end
+    local timeout = math.max(xDTaraZ.Config.DropAppearTimeout, remaining + 0.5)
+    local ok = xDTaraZ.Tasks.Await(token, function() return xDTaraZ.Util.ServerNow() >= landAt end, timeout)
     return ok
 end
 
@@ -1794,6 +3362,46 @@ function xDTaraZ.Delivery.LowerSettle()
     tune.DropSettle = math.max(floor, tune.DropSettle - 0.01)
 end
 
+---@return number|nil  replicated break timer for the carried egg
+function xDTaraZ.Delivery.BreakLeft()
+    local left
+    for _, egg in ipairs(xDTaraZ.Player:BasketItems()) do
+        if egg:GetAttribute("Delivering") then continue end
+        local at = tonumber(egg:GetAttribute("BreakAt"))
+        if at then left = math.min(left or math.huge, at - xDTaraZ.Util.ServerNow()) end
+    end
+    return left
+end
+
+---@return boolean  one bounded hop followed by movement at the actual ride speed
+function xDTaraZ.Delivery.TravelCarry(token, cf, eggName)
+    local cfg = xDTaraZ.Config
+    local root, speed = xDTaraZ.Player.Root, xDTaraZ.Mount.TravelSpeed()
+    if not root or speed <= 0 or xDTaraZ.Player:BasketCount() == 0 then return false end
+    if not token.returnHop then
+        token.returnHop = true
+        local delta = cf.Position - root.Position
+        local hopLimit = math.min(cfg.ReturnHopMax, math.max(xDTaraZ.Mount.Speed(), cfg.UnmountedPlayerSpeed) * State.Tune.DirectFactor)
+        local hop = math.min(hopLimit, math.max(0, delta.Magnitude - cfg.TravelStopDistance))
+        if hop > 0 then
+            if not xDTaraZ.Tasks.Teleport(token, CFrame.new(root.Position + delta.Unit * hop) * root.CFrame.Rotation) then return false end
+            if not xDTaraZ.Delivery.Sleep(token, cfg.TpSettle) then return false end
+        end
+    end
+    local timeout = (cf.Position - root.Position).Magnitude / speed + cfg.RunBudget
+    token.budget = math.max(token.budget or 0, os.clock() + timeout)
+    local expired = false
+    local reached = xDTaraZ.Tasks.Travel(token, cf, xDTaraZ.Mount.TravelSpeed, timeout, {
+        noClip = true, reach = cfg.TravelStopDistance,
+        done = function()
+            local left = xDTaraZ.Delivery.BreakLeft()
+            expired = left ~= nil and left <= 0
+            return expired or xDTaraZ.Player:BasketCount() == 0
+        end,
+    })
+    return reached and not expired and xDTaraZ.Player:BasketCount() > 0
+end
+
 ---@return "Deposited"|"Gone"|"Refused"|"Aborted"
 function xDTaraZ.Delivery.DropCycle(token, bp, eggName, origin)
     local cfg = xDTaraZ.Config
@@ -1803,7 +3411,11 @@ function xDTaraZ.Delivery.DropCycle(token, bp, eggName, origin)
         if not hrp or os.clock() > token.budget then return "Aborted" end
 
         local out = xDTaraZ.Geo.Outside(bp, hrp.Position, cfg.DropOutside)
-        if not xDTaraZ.Tasks.Teleport(token, CFrame.new(out)) then return "Aborted" end
+        if not xDTaraZ.Delivery.Fits(xDTaraZ.Geo.Trip(bp, hrp.Position), nil, eggName) then
+            if not xDTaraZ.Delivery.TravelCarry(token, CFrame.new(out), eggName) then return "Aborted" end
+        elseif not xDTaraZ.Tasks.Teleport(token, CFrame.new(out)) then
+            return "Aborted"
+        end
         if not xDTaraZ.Delivery.Sleep(token, xDTaraZ.State.Tune.DropSettle) then return "Aborted" end
 
         local drop = xDTaraZ.Delivery.Drop(token, eggName, origin)
@@ -1811,7 +3423,7 @@ function xDTaraZ.Delivery.DropCycle(token, bp, eggName, origin)
         origin = drop.origin or origin
 
         local fresh = xDTaraZ.Util.Flat(drop.pos, out) <= cfg.StaleDropDistance
-        local stand = fresh and out or drop.pos + Vector3.new(0, 3, 0)
+        local stand = fresh and out or drop.pos + Vector3.new(0, xDTaraZ.Geo.Lift(), 0)
         if fresh then xDTaraZ.Delivery.LowerSettle() end
         if not fresh then
             xDTaraZ.Delivery.RaiseSettle()
@@ -1854,6 +3466,7 @@ function xDTaraZ.Delivery.Run(token, entry)
     xDTaraZ.Delivery.LastPlan = { mode = mode, trip = math.floor(trip), speed = xDTaraZ.Mount.Speed(), settle = xDTaraZ.State.Tune.DirectFactor }
     local stand = mode == "Plot" and xDTaraZ.Geo.EdgeInside(bp, entry.pos) or xDTaraZ.Geo.StandPoint(bp, entry.pos)
 
+    xDTaraZ.EggIndex.Expect("*carry")
     local got, why = xDTaraZ.Delivery.Pickup(token, entry.guid, stand)
     if not got then
         if why == "full" then xDTaraZ.Delivery.Recover(token) end
@@ -1907,7 +3520,7 @@ end
 ---@return boolean  basket empty afterwards
 function xDTaraZ.Delivery.Recover(token)
     local eggName, phase = xDTaraZ.Delivery.Carried()
-    if not phase then return true end
+    if not phase then return true, "Empty" end
 
     local cfg = xDTaraZ.Config
     token.flags0 = token.flags0 or xDTaraZ.Player:Flags()
@@ -1915,7 +3528,7 @@ function xDTaraZ.Delivery.Recover(token)
 
     if phase ~= "Carry" then
         xDTaraZ.Tasks.Await(token, function() return xDTaraZ.Player:BasketCount() == 0 end, cfg.DepositTimeout)
-        return xDTaraZ.Player:BasketCount() == 0
+        return xDTaraZ.Player:BasketCount() == 0, "Settled"
     end
 
     local _, bp = xDTaraZ.Player:Plot()
@@ -1924,11 +3537,12 @@ function xDTaraZ.Delivery.Recover(token)
 
     local wasCritical = xDTaraZ.Eggs.CarryCritical
     xDTaraZ.Eggs.CarryCritical = true
+    local outcome = "Deposited"
     if not (xDTaraZ.Geo.InPlot(hrp.Position) and xDTaraZ.Delivery.Reenter(token, bp, hrp)) then
-        xDTaraZ.Delivery.DropCycle(token, bp, eggName, nil)
+        outcome = xDTaraZ.Delivery.DropCycle(token, bp, eggName, nil)
     end
     xDTaraZ.Eggs.CarryCritical = wasCritical
-    return xDTaraZ.Player:BasketCount() == 0
+    return xDTaraZ.Player:BasketCount() == 0, outcome
 end
 
 xDTaraZ.Mount = { Name = nil, Dirty = true, AutoLabel = "Auto (fastest)" }
@@ -1995,6 +3609,26 @@ function xDTaraZ.Mount.Speed()
     xDTaraZ.Mount.Name = name
     local info = xDTaraZ.GameLib.PetInfo[name]
     return info and info.speed or 0
+end
+
+---@return number  actual aged/mutated ride speed, capped by current slowdown
+function xDTaraZ.Mount.TravelSpeed()
+    local hum = xDTaraZ.Player.Humanoid
+    local cap = xDTaraZ.Config.UnmountedPlayerSpeed
+    if xDTaraZ.Player:Riding() then
+        cap = xDTaraZ.Mount.Speed()
+        local root = xDTaraZ.Player.Root
+        local joint = root and root:FindFirstChild("PetMountJoint")
+        local model = joint and joint.Part1 and joint.Part1:FindFirstAncestorOfClass("Model")
+        local aging = xDTaraZ.GameLib.Svc.PetAging
+        if model and aging and type(aging.RealSpeedFor) == "function" then
+            local mutations = xDTaraZ.GameLib.Mutations
+            local factor = (mutations[model:GetAttribute("Mutation") or ""] or 1) * (mutations[model:GetAttribute("SpawnMutation") or ""] or 1)
+            local ok, actual = xDTaraZ.GameLib.Call(aging.RealSpeedFor, cap, model:GetAttribute("Weight"), factor)
+            if ok and type(actual) == "number" and actual > 0 and actual < math.huge then cap = actual end
+        end
+    end
+    return math.min(cap, hum and hum.WalkSpeed or 0)
 end
 
 function xDTaraZ.Mount.Forget()
@@ -2124,9 +3758,14 @@ end
 
 ---@return number, string, number  score, delivery mode, contest
 function xDTaraZ.Planner.Score(entry, riders)
-    local mode = xDTaraZ.Delivery.Mode(entry)
+    local mode, trip = xDTaraZ.Delivery.Mode(entry)
     local contest = xDTaraZ.Planner.Contest(entry, riders)
     local cost = Config.TripCost[mode] or Config.TripCost.Drop
+    if mode == "Drop" then
+        local hum = xDTaraZ.Player.Humanoid
+        local speed = math.min(math.max(xDTaraZ.Mount.Speed(), Config.UnmountedPlayerSpeed), hum and hum.WalkSpeed or 0) * 0.9
+        cost += trip / math.max(speed, 1)
+    end
     local score = (entry.value or 0) * (1 + contest * State.Tune.ContestWeight) / cost
     return score, mode, contest
 end
@@ -2170,6 +3809,7 @@ function xDTaraZ.Planner.Next(minRank)
 
     for _, pick in ipairs(planner.Ranked) do
         local entry = pick[1]
+        if not minRank and xDTaraZ.Util.Opt("EggRoute") == "Fast nearby" and pick[2] == "Drop" then continue end
         if minRank then
             local info = GameLib.EggInfo[entry.egg]
             if not info or (GameLib.RarityRank[info.rarity] or 0) < minRank then continue end
@@ -2382,11 +4022,19 @@ function xDTaraZ.Eggs.Tick(minRank)
     eggs.Ticking = true
     local ok, err = pcall(eggs.TickOnce, minRank)
     eggs.Ticking = false
-    if not ok then error(err, 0) end
+    if not ok then
+        eggs.CarryCritical = false
+        eggs.ReleaseToken()
+        error(err, 0)
+    end
 end
 
 function xDTaraZ.Eggs.TickOnce(minRank)
     local eggs = xDTaraZ.Eggs
+    if xDTaraZ.Halloween.InZone() == true then
+        eggs.ReleaseToken()
+        return eggs.SetPhase("Idle", "Leave the Halloween island to farm world eggs")
+    end
     xDTaraZ.EggIndex.CheckRoll()
 
     local _, bp = xDTaraZ.Player:Plot()
@@ -2777,6 +4425,16 @@ local function SkipsDip(entry, info)
     return entry.mutation == "Magma" or entry.mutation == "Eternal"
 end
 
+---@return number  minimum remaining break time for the dip and trip back
+function xDTaraZ.Volcano.MinimumBreak()
+    local speed = xDTaraZ.Mount.TravelSpeed()
+    if speed <= 0 then local _, bestSpeed = xDTaraZ.Mount.Best(); speed = bestSpeed end
+    speed = math.max(speed, xDTaraZ.Config.UnmountedPlayerSpeed)
+    local _, bp = xDTaraZ.Player:Plot()
+    local returning = bp and math.max(0, (xDTaraZ.Config.VolcanoCenter - bp.Position).Magnitude - xDTaraZ.Config.ReturnHopMax) / speed or math.huge
+    return returning + xDTaraZ.Config.VolcanoMinBreakLeft
+end
+
 ---@return boolean  egg run is idle or waiting, or the wave is down to its last free eggs
 function xDTaraZ.Volcano.WaveTail()
     if xDTaraZ.Eggs.Waiting() then return true end
@@ -2791,8 +4449,7 @@ end
 ---@return table?  index entry worth a dip, best score first
 function xDTaraZ.Volcano.PickDip()
     local rarities = xDTaraZ.Volcano.Options().DipRarities or {}
-    local info = xDTaraZ.GameLib.Data.Volcano
-    local minBreak = (info and tonumber(info.BonusSeconds) or math.huge) + xDTaraZ.Config.VolcanoMinBreakLeft
+    local minBreak = xDTaraZ.Volcano.MinimumBreak()
     local best, bestScore = nil, -math.huge
 
     for guid, entry in pairs(xDTaraZ.EggIndex.Entries) do
@@ -2844,22 +4501,19 @@ function xDTaraZ.Volcano.Dip(token)
 
     local top = xDTaraZ.Volcano.Part("VolcanoTop")
     if not top then return false end
-    local hover = CFrame.new(top.Position + Vector3.yAxis * (tonumber(info.HoverHeight) or 0))
-    local over = false
-    for _ = 1, xDTaraZ.Config.VolcanoTpTries do
-        if not xDTaraZ.Tasks.Teleport(token, hover) then return false end
-        if not xDTaraZ.Volcano.Sleep(token, xDTaraZ.Config.VolcanoDipSettle) then return false end
-        over = xDTaraZ.Volcano.IsOver(top)
-        if over then break end
-    end
-    if not over then return false end
+    xDTaraZ.Tasks.Teleport(token, CFrame.new(top.Position + Vector3.yAxis * (tonumber(info.HoverHeight) or 0)))
+    if not xDTaraZ.Volcano.Sleep(token, xDTaraZ.Config.VolcanoDipSettle) then return false end
+    if not xDTaraZ.Volcano.IsOver(top) then return false end
 
     xDTaraZ.Volcano.SetStatus("Dipping egg")
     local reply = xDTaraZ.Volcano.FireUntilReply(token, remote)
     if not reply or reply.Cancelled then return false end
 
     local landAt = tonumber(reply.ArriveAt) or 0
-    xDTaraZ.Tasks.Await(token, function() return xDTaraZ.Util.ServerNow() >= landAt end, xDTaraZ.Config.VolcanoResultTimeout)
+    local arrived = xDTaraZ.Tasks.Await(token, function()
+        return (xDTaraZ.Volcano.Reply and xDTaraZ.Volcano.Reply.Cancelled) or xDTaraZ.Util.ServerNow() >= landAt
+    end, xDTaraZ.Config.VolcanoResultTimeout)
+    if not arrived or (xDTaraZ.Volcano.Reply and xDTaraZ.Volcano.Reply.Cancelled) then return false end
     xDTaraZ.Volcano.Dipped += 1
     if reply.Success then xDTaraZ.Volcano.Magma += 1 end
     return true
@@ -2869,6 +4523,7 @@ end
 function xDTaraZ.Volcano.DipRun(token, entry)
     local _, bp = xDTaraZ.Player:Plot()
     if not bp then return "no plot" end
+    if not xDTaraZ.Mount.Ensure(token) then return "A fast ride pet is needed for the return" end
 
     local ok, why = xDTaraZ.Delivery.Pickup(token, entry.guid, xDTaraZ.Geo.StandPoint(bp, entry.pos))
     if not ok then
@@ -2878,9 +4533,11 @@ function xDTaraZ.Volcano.DipRun(token, entry)
 
     xDTaraZ.Eggs.CarryCritical = true
     local dipped = xDTaraZ.Volcano.Dip(token)
-    xDTaraZ.Delivery.Recover(token)
+    xDTaraZ.Volcano.SetStatus("Returning the dipped egg")
+    local _, outcome = xDTaraZ.Delivery.Recover(token)
     xDTaraZ.Eggs.CarryCritical = false
-    return dipped and "dipped" or "dip skipped"
+    if outcome ~= "Deposited" then return "Dip finished; egg delivery not confirmed" end
+    return dipped and "dipped and delivered" or "dip skipped; egg delivered"
 end
 
 ---@param canTouch boolean  executor touch works
@@ -2941,7 +4598,9 @@ function xDTaraZ.Volcano.ObbyRun(token, entry)
         return "climb failed"
     end
 
-    local stand = entry.pos + Vector3.yAxis * xDTaraZ.Config.VolcanoStandLift
+    if not xDTaraZ.Mount.Ensure(token) then return "A fast ride pet is needed for the return" end
+
+    local stand = entry.pos + Vector3.yAxis * xDTaraZ.Geo.Lift(xDTaraZ.Config.VolcanoStandLift)
     local ok, why = xDTaraZ.Delivery.Pickup(token, entry.guid, stand)
     if not ok then
         xDTaraZ.Volcano.Skip[entry.guid] = os.clock() + xDTaraZ.Config.GoneBlacklistSec
@@ -2949,9 +4608,10 @@ function xDTaraZ.Volcano.ObbyRun(token, entry)
     end
 
     xDTaraZ.Eggs.CarryCritical = true
-    xDTaraZ.Delivery.Recover(token)
+    xDTaraZ.Volcano.SetStatus("Returning the volcanic egg")
+    local _, outcome = xDTaraZ.Delivery.Recover(token)
     xDTaraZ.Eggs.CarryCritical = false
-    return "volcanic egg run done"
+    return outcome == "Deposited" and "volcanic egg delivered" or "Volcanic egg delivery not confirmed"
 end
 
 ---@return table?, function?  target and runner for this tick
@@ -2986,10 +4646,26 @@ end
 
 function xDTaraZ.Volcano.Step()
     if not xDTaraZ.State.Alive or not xDTaraZ.Player:IsAlive() or xDTaraZ.Guard.Tripped then return end
+    if xDTaraZ.Halloween.InZone() == true then
+        xDTaraZ.Volcano.SetStatus("Leave the Halloween island to farm the volcano")
+        return
+    end
     if Orphaned() then
         xDTaraZ.Volcano.SetStatus("Finishing the egg")
         xDTaraZ.Eggs.Recover()
         return
+    end
+    if not xDTaraZ.Player:Riding() then
+        local mountToken = xDTaraZ.Tasks.Request("Volcano", xDTaraZ.Tasks.Prio.Volcano)
+        if not mountToken then return end
+        xDTaraZ.Volcano.Token = mountToken
+        local mounted = xDTaraZ.Mount.Ensure(mountToken)
+        xDTaraZ.Volcano.Token = nil
+        xDTaraZ.Tasks.Release(mountToken)
+        if not mounted then
+            xDTaraZ.Volcano.SetStatus("A fast ride pet is needed for the return")
+            return
+        end
     end
     xDTaraZ.Volcano.Bind()
 
@@ -3009,6 +4685,7 @@ function xDTaraZ.Volcano.Step()
 
     local flags0 = xDTaraZ.Player:Flags()
     local ok, outcome = xDTaraZ.Util.Try("volcano", runner, token, entry)
+    xDTaraZ.Eggs.CarryCritical = false
     xDTaraZ.Guard.Check(flags0)
 
     xDTaraZ.Volcano.Token = nil
@@ -3042,6 +4719,8 @@ xDTaraZ.Hatch = {
     LastRequest = 0,
     CapHit = false,
     Hatched = 0,
+    Purchased = {},
+    Confirmed = {},
     Planted = 0,
     GrowCache = {},
     Signal = xDTaraZ.Signal.new(),
@@ -3090,6 +4769,8 @@ function xDTaraZ.Hatch.OnHatched(msg)
     xDTaraZ.State.PlotEggs[msg.EggKey] = nil
     xDTaraZ.Hatch.Pending[msg.EggKey] = nil
     xDTaraZ.Hatch.Hatched += 1
+    xDTaraZ.Hatch.Confirmed[msg.EggKey] = os.clock()
+    xDTaraZ.Hatch.Purchased[msg.EggKey] = nil
     xDTaraZ.Hatch.Signal:Fire(msg)
 end
 
@@ -3154,13 +4835,14 @@ function xDTaraZ.Hatch.ReadyAt(plotEgg)
 end
 
 ---@return integer  hatch fires sent this pass
-function xDTaraZ.Hatch.HatchNow()
+function xDTaraZ.Hatch.HatchNow(onlyKey)
     local remote = xDTaraZ.GameLib.Remote("Hatch")
     if not remote then return 0 end
     xDTaraZ.Hatch.Bind()
 
     local fired, now = 0, os.clock()
     for key, plotEgg in pairs(xDTaraZ.State.PlotEggs) do
+        if onlyKey and key ~= onlyKey then continue end
         if (xDTaraZ.Hatch.Pending[key] or 0) > now then continue end
         local left = xDTaraZ.Hatch.Left(plotEgg)
         if not left or left > 0 then continue end
@@ -3175,7 +4857,8 @@ end
 
 function xDTaraZ.Hatch.Step()
     local opts = xDTaraZ.Hatch.Options()
-    if not opts.AutoHatch then return end
+    local purchased = opts.HalloweenAutoHatch ~= false and next(xDTaraZ.Hatch.Purchased) ~= nil
+    if not opts.AutoHatch and not purchased then return end
     xDTaraZ.Hatch.Bind()
 
     if os.clock() - xDTaraZ.Hatch.LastRequest > xDTaraZ.Config.PlotEggsRefresh then
@@ -3183,6 +4866,13 @@ function xDTaraZ.Hatch.Step()
     end
     if opts.HoldHatchBoost and not xDTaraZ.Hatch.BoostActive() then
         xDTaraZ.Hatch.SetStatus("Holding for luck boost")
+        return
+    end
+
+    if not opts.AutoHatch then
+        for key in pairs(xDTaraZ.Hatch.Purchased) do
+            xDTaraZ.Hatch.HatchNow(key)
+        end
         return
     end
 
@@ -3214,7 +4904,13 @@ end
 ---@return number  higher plants first
 function xDTaraZ.Hatch.Rank(name, weight, order, mutation)
     local info = xDTaraZ.GameLib.EggInfo[name]
-    local growth = math.max(info.growth or 1, 1)
+    local key = name .. "|" .. tostring(weight)
+    local growth = xDTaraZ.Hatch.GrowCache[key]
+    if growth == nil then
+        growth = xDTaraZ.GameLib.GrowthSeconds(info.growth or 1, weight) or info.growth or 1
+        xDTaraZ.Hatch.GrowCache[key] = growth
+    end
+    growth = math.max(growth, 0.001)
     if order == "Fastest growth" then return -growth end
     local value = xDTaraZ.EggIndex.Value({ egg = name, weight = weight, mutation = mutation })
     if order == "Value per hour" then return value / growth end
@@ -3338,6 +5034,29 @@ function xDTaraZ.Hatch.PlantOne(token, tool, args)
     return false
 end
 
+---@return string|nil  the new placement key for this one tool
+function xDTaraZ.Hatch.PlantTool(token, tool)
+    xDTaraZ.Hatch.Bind()
+    local plot, bp = xDTaraZ.Player:Plot()
+    if not plot or not bp or xDTaraZ.Hatch.Room() <= 0 then return nil end
+    local egg = xDTaraZ.Hatch.ToolEgg(tool)
+    if not egg then return nil end
+    local noNest = LocalPlayer:GetAttribute("NoNest") == true
+    local slots = noNest and xDTaraZ.Hatch.Spots(bp, 1) or xDTaraZ.Hatch.FreeNests(plot)
+    if not slots[1] then return nil end
+
+    local before = {}
+    for key in pairs(xDTaraZ.State.PlotEggs) do before[key] = true end
+    local stand = CFrame.new(bp.Position + Vector3.yAxis * (bp.Size.Y / 2 + xDTaraZ.Geo.Lift(Config.PlantStandLift)))
+    if not xDTaraZ.Tasks.Teleport(token, stand) then return nil end
+    local args = noNest and { PlantPosition = slots[1] } or { NestId = slots[1] }
+    if not xDTaraZ.Hatch.PlantOne(token, tool, args) then return nil end
+    for key, placement in pairs(xDTaraZ.State.PlotEggs) do
+        if not before[key] and placement.egg == egg then return key end
+    end
+    return nil
+end
+
 ---@return boolean  takes longer than PlantLongGrow seconds to grow
 function xDTaraZ.Hatch.IsLong(name, weight)
     local cache = xDTaraZ.Hatch.GrowCache
@@ -3391,7 +5110,7 @@ function xDTaraZ.Hatch.Plant(token, plot, bp)
     local slots = noNest and xDTaraZ.Hatch.Spots(bp, math.min(room, #queue)) or xDTaraZ.Hatch.FreeNests(plot)
     if #slots == 0 or #queue == 0 or room == 0 then return 0 end
 
-    xDTaraZ.Tasks.Teleport(token, CFrame.new(bp.Position + Vector3.yAxis * (bp.Size.Y / 2 + xDTaraZ.Config.PlantStandLift)))
+    xDTaraZ.Tasks.Teleport(token, CFrame.new(bp.Position + Vector3.yAxis * (bp.Size.Y / 2 + xDTaraZ.Geo.Lift(Config.PlantStandLift))))
     local planted = 0
     for i, slot in ipairs(slots) do
         local entry = queue[i]
@@ -4397,7 +6116,7 @@ end
 function xDTaraZ.Pets.PlotStand()
     local _, bp = xDTaraZ.Player:Plot()
     if not bp then return nil end
-    return CFrame.new(bp.Position + Vector3.new(0, bp.Size.Y / 2 + xDTaraZ.Config.PetStandLift, 0)), bp
+    return CFrame.new(bp.Position + Vector3.new(0, bp.Size.Y / 2 + xDTaraZ.Geo.Lift(Config.PetStandLift), 0)), bp
 end
 
 ---@return Vector3  random spot on the baseplate surface
@@ -4819,7 +6538,7 @@ function xDTaraZ.Sell.Plan(junkOnly)
         if not xDTaraZ.Sell.Allowed(pet, keep, under) then continue end
         if xDTaraZ.Pets.Protected(pet, needs) then continue end
         plan[#plan + 1] = pet
-        cash += pet.income * xDTaraZ.Config.SellPriceMult
+        cash += pet.income * GameLib.SellMultiplier()
     end
     return plan, cash
 end
@@ -4961,13 +6680,27 @@ xDTaraZ.Fusion = {
 
 ---@return string[]  rarities the machine takes, lowest first
 function xDTaraZ.Fusion.Rarities()
-    local cfg = xDTaraZ.GameLib.Data.Fusion
     local rank = xDTaraZ.GameLib.RarityRank
-    local floor = type(cfg) == "table" and rank[cfg.MinimumInputRarity] or 0
-    local list = {}
-    for _, rarity in ipairs(xDTaraZ.GameLib.RarityOrder) do
-        if (rank[rarity] or 0) >= floor then list[#list + 1] = rarity end
+    local list, seen = {}, {}
+
+    if next(xDTaraZ.GameLib.FuseQuality) then
+        for name in pairs(xDTaraZ.GameLib.FuseQuality) do
+            local info = xDTaraZ.GameLib.PetInfo[name]
+            if info and not seen[info.rarity] then
+                seen[info.rarity] = true
+                list[#list + 1] = info.rarity
+            end
+        end
+    else
+        local cfg = xDTaraZ.GameLib.Data.Fusion
+        local floor = type(cfg) == "table" and rank[cfg.MinimumInputRarity] or 0
+        for _, rarity in ipairs(xDTaraZ.GameLib.RarityOrder) do
+            if (rank[rarity] or 0) >= floor then list[#list + 1] = rarity end
+        end
+        return list
     end
+
+    table.sort(list, function(a, b) return (rank[a] or 0) < (rank[b] or 0) end)
     return list
 end
 
@@ -5038,6 +6771,7 @@ function xDTaraZ.Fusion.Candidates(count)
         local pet = owned[rank]
         if pet.placed or not pet.tool or not allowed[pet.rarity or ""] then continue end
         if (xDTaraZ.GameLib.RarityRank[pet.rarity] or 0) < floor then continue end
+        if next(xDTaraZ.GameLib.FuseQuality) and not xDTaraZ.GameLib.FuseQuality[pet.name or ""] then continue end
         if pet.mutated and xDTaraZ.Util.Opt("FuseKeepMutated") then continue end
         if xDTaraZ.Pets.Protected(pet, needs) then continue end
         picked[#picked + 1] = pet
@@ -5051,7 +6785,7 @@ function xDTaraZ.Fusion.Cost(state)
     if type(raw) ~= "string" or raw == "" then return nil end
     local ok, preview = pcall(HttpService.JSONDecode, HttpService, raw)
     if not ok or type(preview) ~= "table" then return nil end
-    return tonumber(preview.Cost or preview.Price)
+    return tonumber(preview.FuseCost or preview.Cost or preview.Price)
 end
 
 ---@return boolean  fired and the slot filled
@@ -5144,11 +6878,15 @@ function xDTaraZ.Fusion.Claim(token, state, console)
     if not key or key == fusion.ClaimedKey then return end
     if not fusion.AtConsole(token, console, "Claim", key) then return end
 
+    local claimed = xDTaraZ.Tasks.Await(token, function() return state:GetAttribute("FusionStatus") ~= "Result" end, xDTaraZ.Config.FuseResultTimeout)
+    if not claimed then
+        fusion.SetStatus("Claim not confirmed; retrying")
+        return
+    end
     fusion.ClaimedKey = key
     fusion.Fused += 1
     table.clear(fusion.Inputs)
     fusion.SetStatus("Claimed fusion result")
-    xDTaraZ.Tasks.Await(token, function() return state:GetAttribute("FusionStatus") ~= "Result" end, xDTaraZ.Config.FuseResultTimeout)
     fusion.PutAway(token)
 end
 
@@ -5292,9 +7030,7 @@ end
 
 ---@return number  hatch luck multiplier with the live event bonus
 function xDTaraZ.Economy.LuckMult()
-    local n = xDTaraZ.Economy.HatchUpgrades()
-    local event = tonumber(ReplicatedStorage:GetAttribute("HatchLuckEventMultiplier")) or 1
-    return (1 + n + 4 * math.floor(n / 5)) * event
+    return GameLib.LuckMult()
 end
 
 ---@param amount number|nil  nil or 0 clears the hold
@@ -5349,7 +7085,7 @@ function xDTaraZ.Economy.RebirthPlan()
     local owned = xDTaraZ.Economy.OwnedPet(plan.pet)
     plan.owned = owned ~= nil and xDTaraZ.Pets.Protected(owned) == true
 
-    local gain = xDTaraZ.Economy.Income() / (1 + done)
+    local gain = xDTaraZ.Economy.Income() / GameLib.RebirthMultiplier(done)
     if gain > 0 then plan.payback = plan.cost / gain end
 
     if not plan.owned then
@@ -5864,6 +7600,37 @@ function xDTaraZ.Boosts.Stop()
     xDTaraZ.Boosts.Primed = false
 end
 
+xDTaraZ.Prompts = { Active = false, Saved = setmetatable({}, { __mode = "k" }), Connections = {} }
+
+function xDTaraZ.Prompts.Apply(prompt)
+    local prompts = xDTaraZ.Prompts
+    if not prompts.Active or not xDTaraZ.State.Alive or not prompt.Parent or not prompt:IsA("ProximityPrompt") then return end
+    if prompts.Saved[prompt] == nil then prompts.Saved[prompt] = prompt.HoldDuration end
+    if prompt.HoldDuration ~= 0 then prompt.HoldDuration = 0 end
+end
+
+function xDTaraZ.Prompts.Start()
+    local prompts = xDTaraZ.Prompts
+    if prompts.Active then return end
+    prompts.Active = true
+    local service = game:GetService("ProximityPromptService")
+    for _, signal in ipairs({ service.PromptShown, service.PromptButtonHoldBegan, Workspace.DescendantAdded }) do
+        prompts.Connections[#prompts.Connections + 1] = signal:Connect(prompts.Apply)
+    end
+    for _, instance in ipairs(Workspace:GetDescendants()) do prompts.Apply(instance) end
+end
+
+function xDTaraZ.Prompts.Stop()
+    local prompts = xDTaraZ.Prompts
+    prompts.Active = false
+    for _, connection in ipairs(prompts.Connections) do connection:Disconnect() end
+    table.clear(prompts.Connections)
+    for prompt, duration in pairs(prompts.Saved) do
+        if prompt.Parent then prompt.HoldDuration = duration end
+    end
+    table.clear(prompts.Saved)
+end
+
 do
     local defaults = {
         WalkSpeed = 60, JumpPower = 80, FlySpeed = 120,
@@ -5938,14 +7705,35 @@ function xDTaraZ.World.Sync()
 end
 
 function xDTaraZ.World.Carrying()
-    return xDTaraZ.Player:BasketCount() > 0
+    return xDTaraZ.Tasks.Carrying()
 end
 
 xDTaraZ.Teleport = {}
 
+local GroundRay = RaycastParams.new()
+GroundRay.FilterType = Enum.RaycastFilterType.Exclude
+GroundRay.RespectCanCollide = true
+local GroundRayOf = nil
+
+---@return CFrame  stand height over the real surface at pos, raycast first
+local function GroundCF(pos)
+    local char = xDTaraZ.Player.Char
+    if GroundRayOf ~= char then
+        GroundRayOf = char
+        GroundRay.FilterDescendantsInstances = { char or Workspace }
+    end
+
+    local origin = pos + Vector3.new(0, Config.GroundRayUp, 0)
+    local hit = Workspace:Raycast(origin, Vector3.new(0, -(Config.GroundRayUp + Config.GroundRayDown), 0), GroundRay)
+    if hit then
+        return CFrame.new(hit.Position + Vector3.new(0, Config.StandLift, 0))
+    end
+    return CFrame.new(pos)
+end
+
 ---@return CFrame  a standing spot on top of a part
 local function Above(part)
-    return CFrame.new(part.Position + Vector3.new(0, part.Size.Y / 2 + Config.StandLift, 0))
+    return GroundCF(part.Position + Vector3.new(0, part.Size.Y / 2 + Config.StandLift, 0))
 end
 
 ---@return table<string, function>  label -> CFrame getter
@@ -5971,7 +7759,7 @@ function xDTaraZ.Teleport.Places()
             if not (spot:IsA("Model") or spot:IsA("BasePart")) then continue end
             if spot.Name:find("^AlwaysStream") then continue end
             places[folderName .. ": " .. spot.Name] = function()
-                return spot:GetPivot() + Vector3.new(0, Config.StandLift, 0)
+                return GroundCF(spot:GetPivot().Position + Vector3.new(0, Config.StandLift, 0))
             end
         end
     end
@@ -5986,6 +7774,13 @@ function xDTaraZ.Teleport.Places()
     end
 
     places["Volcano"] = xDTaraZ.Teleport.VolcanoSpot
+
+    local halloween = rawget(xDTaraZ, "Halloween")
+    if halloween and halloween.Places then
+        for label, getter in pairs(halloween.Places()) do
+            places[label] = getter
+        end
+    end
     return places
 end
 
@@ -6056,21 +7851,6 @@ end
 
 function xDTaraZ.Teleport.Home()
     return xDTaraZ.Teleport.To("My Plot")
-end
-
-function xDTaraZ.Teleport.BestEgg()
-    local best, bestScore = nil, -math.huge
-    for _, entry in pairs(xDTaraZ.EggIndex.Entries) do
-        if entry.privateTo and not IsOurs(entry.privateTo) then continue end
-        local score = xDTaraZ.Planner.Score(entry)
-        if score > bestScore then best, bestScore = entry, score end
-    end
-    if not best then
-        xDTaraZ.Util.Notify("Teleport", "No egg on the map right now")
-        return false
-    end
-    xDTaraZ.Util.Notify("Teleport", best.egg .. (best.mutation and (" (" .. tostring(best.mutation) .. ")") or ""))
-    return xDTaraZ.Teleport.Go(CFrame.new(best.pos + Vector3.new(0, Config.StandLift, 0)))
 end
 
 xDTaraZ.Move = { Saved = {}, Patched = {}, Parts = {}, PartsOf = nil, Conns = {}, Floats = {}, FlyWarned = false }
@@ -6537,6 +8317,22 @@ function xDTaraZ.Esp.Give(guid)
     local slot = esp.Boards[guid]
     if not slot then return end
     esp.Boards[guid] = nil
+
+    if #esp.Pool >= Config.EspPool then
+        esp.Drop(slot)
+        return
+    end
+    slot.board.Enabled = false
+    table.insert(esp.Pool, slot)
+end
+
+---@param boards table  another module's board map
+---@param key    string key in that map
+function xDTaraZ.Esp.Disown(boards, key)
+    local esp = xDTaraZ.Esp
+    local slot = boards[key]
+    if not slot then return end
+    boards[key] = nil
 
     if #esp.Pool >= Config.EspPool then
         esp.Drop(slot)
@@ -7358,7 +9154,9 @@ end
 
 ---@return string  what the steer is chasing, for the status line
 function xDTaraZ.Kaitun.Steer()
-    local pet = xDTaraZ.Economy.NextRequirement()
+    local reached = xDTaraZ.Economy.RebirthPlan().reason == "target reached"
+    if reached and xDTaraZ.Util.Opt("EggHunter") then xDTaraZ.Kaitun.Set("EggHunter", false) end
+    local pet = not reached and xDTaraZ.Economy.NextRequirement() or nil
     local missing = pet and not xDTaraZ.Economy.OwnedPet(pet)
     local key = missing and (pet .. "@" .. math.floor(xDTaraZ.Economy.LuckMult())) or "none"
 
@@ -7452,12 +9250,22 @@ do
     local hatch = { "AutoPlaceEggs", "AutoHatch" }
     local pets = { "AutoEquipBest", "AutoCollectCash", "AutoFeed" }
     local economy = { "AutoUpgrade", "AutoRebirth", "SmartSpend" }
+    local halloween = { "AutoCandy", "AutoTrickOrTreat", "AutoPumpkin", "AutoHalloweenEgg", "AutoRitual" }
 
     ui.Hooks = {
+        InstantPrompt = ui.Switch("Prompts"),
         AutoEggs = ui.Switch("Eggs"),
         EggHunter = ui.Switch("Hunter"),
         VolcanoDip = shared("Volcano", volcano),
         VolcanoObby = shared("Volcano", volcano),
+        AutoCandy = shared("Halloween", halloween),
+        AutoTrickOrTreat = shared("Halloween", halloween),
+        AutoPumpkin = shared("Halloween", halloween),
+        AutoHalloweenEgg = shared("Halloween", halloween),
+        AutoRitual = shared("Halloween", halloween),
+        HalloweenEsp = function(on)
+            if not on then xDTaraZ.Halloween.ClearEsp() end
+        end,
         AutoPlaceEggs = shared("Hatch", hatch),
         AutoHatch = shared("Hatch", hatch),
         ClearJunk = function(on)
@@ -7641,7 +9449,6 @@ function xDTaraZ.UI.Home(window)
     local quick = tab:AddLeftGroupbox(T("Quick", "ด่วน"), "bomb")
     quick:AddButton({ Text = T("Collect Eggs Now", "เก็บไข่เดี๋ยวนี้"), Style = "Primary", Func = xDTaraZ.UI.Detach("collect now", xDTaraZ.Eggs.CollectNow) })
     quick:AddButton({ Text = T("Return Home", "กลับบ้าน"), Func = xDTaraZ.UI.Detach("return home", xDTaraZ.Teleport.Home) })
-        :AddButton({ Text = T("Teleport To Best Egg", "วาร์ปไปไข่ดีสุด"), Func = xDTaraZ.UI.Detach("best egg", xDTaraZ.Teleport.BestEgg) })
 
     local kaitun = tab:AddLeftGroupbox(T("Kaitun", "ไก่ตัน"), "star")
     xDTaraZ.UI.Toggle(kaitun, "Kaitun", {
@@ -7702,6 +9509,10 @@ function xDTaraZ.UI.EggFarm(window)
         xDTaraZ.Mount.Dirty = true
     end })
 
+    xDTaraZ.UI.Bind("EggRoute", farm:AddDropdown("EggRoute", {
+        Text = T("Collection Route", "เส้นทางเก็บไข่"), Values = { "Fast nearby", "Best yield" }, Default = "Fast nearby",
+        Description = T("Fast nearby uses short returns; Best yield includes far eggs. Hunter follows rarity.", "เก็บเร็วเลือกจุดใกล้; คุ้มค่าสุดรวมจุดไกล โหมดล่าใช้เป้าหมายความหายาก"),
+    }))
     local settle = xDTaraZ.UI.Bind("DropSettle", farm:AddSlider("DropSettle", { Text = T("Delivery Safety", "ความปลอดภัยการส่ง"), Min = 0.2, Max = 0.45, Default = 0.2, Rounding = 2, Suffix = "s" }))
     settle:OnChanged(function(value)
         State.Tune.DropSettle = math.clamp(tonumber(value) or Config.DropSettle, Config.DropSettle, 0.45)
@@ -7760,6 +9571,94 @@ function xDTaraZ.UI.Hatching(window)
     xDTaraZ.UI.Bind("JunkRarities", junk:AddDropdown("JunkRarities", { Text = T("Eggs To Clear", "ไข่ที่จะล้าง"), Values = rarities, Multi = true, Default = { "Common", "Rare" } }))
     xDTaraZ.UI.Bind("JunkSellPets", junk:AddDropdown("JunkSellPets", { Text = T("Pets To Sell (empty = auto)", "สัตว์ที่จะขาย (ว่าง = อัตโนมัติ)"), Values = rarities, Multi = true, Default = {}, Description = T("Auto sells what your junk eggs usually give", "อัตโนมัติ = ขายระดับที่ไข่ขยะมักให้") }))
     xDTaraZ.UI.Status(junk, "Junk", "Off")
+end
+
+function xDTaraZ.UI.Halloween(window)
+    local tab = window:AddTab(T("Halloween", "ฮาโลวีน"), "star", T("Halloween event farm", "ฟาร์มอีเวนต์ฮาโลวีน"))
+
+    local candy = tab:AddLeftGroupbox(T("Candy", "ลูกกวาด"), "zap", "OP")
+    xDTaraZ.UI.Toggle(candy, "AutoCandy", {
+        Text = T("Auto Candy", "เก็บลูกกวาดอัตโนมัติ"),
+        Description = T("Gathers candy and cashes it in at the pad", "เก็บลูกกวาดรอบเกาะแล้วเอาไปแลกที่แท่น"),
+    })
+    xDTaraZ.UI.Bind("CandyMode", candy:AddDropdown("CandyMode", {
+        Text = T("Farm Mode", "โหมดฟาร์ม"),
+        Values = { "Most pieces", "Fast returns", "Best yield" }, Default = "Most pieces",
+    }))
+    xDTaraZ.UI.Bind("CandyReturnStyle", candy:AddDropdown("CandyReturnStyle", {
+        Text = T("Return Style", "วิธีกลับไปฝาก"),
+        Values = { "Quick hops", "Smooth ride" }, Default = "Quick hops",
+    }))
+    xDTaraZ.UI.Bind("CandyReturnSpeed", candy:AddSlider("CandyReturnSpeed", {
+        Text = T("Return Speed (%)", "ความเร็วกลับ (%)"), Min = 100, Max = 600, Default = 350, Rounding = 0,
+    }))
+    xDTaraZ.UI.Bind("CandyAutoMount", candy:AddCheckbox("CandyAutoMount", {
+        Text = T("Use Fastest Ride Pet", "ใช้สัตว์ขี่ที่เร็วที่สุด"), Default = true,
+    }))
+    xDTaraZ.UI.Bind("CandyAvoidSpoil", candy:AddCheckbox("CandyAvoidSpoil", {
+        Text = T("Allow For Candy Slowdown", "เผื่อเวลาตอนลูกกวาดทำให้ช้าลง"), Default = true,
+        Description = T("Skip cursed candy too far to bank at reduced speed", "ข้ามกองที่ไกลจนฝากไม่ทันเมื่อโดนลดความเร็ว"),
+    }))
+    xDTaraZ.UI.Bind("CandyMinAmount", candy:AddSlider("CandyMinAmount", {
+        Text = T("Minimum Pieces", "จำนวนชิ้นขั้นต่ำ"), Min = 1, Max = 15, Default = 1, Rounding = 0,
+    }))
+    xDTaraZ.UI.Bind("CandyMaxRange", candy:AddSlider("CandyMaxRange", {
+        Text = T("Maximum Range", "ระยะไกลสุด"), Min = 100, Max = 3000, Default = Config.CandyRangeDefault, Rounding = 0,
+    }))
+    candy:AddButton({ Text = T("Collect Now", "เก็บเดี๋ยวนี้"), Style = "Primary", Func = xDTaraZ.UI.Detach("candy now", xDTaraZ.Halloween.CandyNow) })
+        :AddButton({ Text = T("Exit Now", "ออกทันที"), Style = "Warning", Func = xDTaraZ.UI.Detach("halloween exit", xDTaraZ.Halloween.ExitNow) })
+    xDTaraZ.UI.Status(candy, "Halloween", "Off")
+
+    local doors = tab:AddLeftGroupbox(T("Trick-or-Treat", "กวนประตูบ้าน"), "house")
+    xDTaraZ.UI.Toggle(doors, "AutoTrickOrTreat", {
+        Text = T("Auto Trick-or-Treat", "กวนประตูบ้านอัตโนมัติ"),
+        Description = T("Knocks lit doors and picks up the candy they drop", "เคาะประตูที่สว่างแล้วเก็บลูกกวาดที่ตก"),
+    })
+    doors:AddButton({ Text = T("Knock Now", "เคาะเดี๋ยวนี้"), Func = xDTaraZ.UI.Detach("knock now", xDTaraZ.Halloween.KnockNow) })
+
+    local pumpkins = tab:AddLeftGroupbox(T("Pumpkins", "ฟักทอง"), "flower")
+    xDTaraZ.UI.Toggle(pumpkins, "AutoPumpkin", {
+        Text = T("Auto Search Pumpkins", "ค้นฟักทองอัตโนมัติ"),
+        Description = T("Searches pumpkins for candy", "ค้นฟักทองเอาลูกกวาด"),
+    })
+    pumpkins:AddButton({ Text = T("Search Now", "ค้นเดี๋ยวนี้"), Func = xDTaraZ.UI.Detach("search now", xDTaraZ.Halloween.SearchNow) })
+
+    local egg = tab:AddRightGroupbox(T("Halloween Egg", "ไข่ฮาโลวีน"), "star", "OP")
+    xDTaraZ.UI.Toggle(egg, "AutoHalloweenEgg", {
+        Text = T("Auto Buy Halloween Egg", "ซื้อไข่ฮาโลวีนอัตโนมัติ"),
+        Description = T("Spends event tokens on the event egg, then places and hatches it", "ใช้โทเกนอีเวนต์ซื้อไข่ แล้ววางกับฟักให้เอง"),
+    })
+    xDTaraZ.UI.Bind("HalloweenKeepTokens", egg:AddSlider("HalloweenKeepTokens", {
+        Text = T("Keep Tokens", "เก็บโทเกนไว้"), Min = 0, Max = 3500, Default = 0, Rounding = 0,
+    }))
+    xDTaraZ.UI.Bind("HalloweenBuyLimit", egg:AddSlider("HalloweenBuyLimit", {
+        Text = T("Purchase Limit (0 = unlimited)", "จำกัดการซื้อ (0 = ไม่จำกัด)"), Min = 0, Max = 100, Default = 0, Rounding = 0,
+    }))
+    xDTaraZ.UI.Bind("HalloweenAutoHatch", egg:AddCheckbox("HalloweenAutoHatch", {
+        Text = T("Place and Hatch Purchased Eggs", "วางและฟักไข่ที่เพิ่งซื้อ"), Default = true,
+    }))
+    egg:AddButton({ Text = T("Buy Egg Now", "ซื้อไข่เดี๋ยวนี้"), Style = "Primary", Func = xDTaraZ.UI.Detach("buy egg now", xDTaraZ.Halloween.BuyNow) })
+    xDTaraZ.UI.Status(egg, "HalloweenEgg", "Off")
+
+    local ritual = tab:AddRightGroupbox(T("Ritual (beta)", "พิธีกรรม (ทดลอง)"), "bomb")
+    xDTaraZ.UI.Toggle(ritual, "AutoRitual", {
+        Text = T("Auto Ritual", "พิธีกรรมอัตโนมัติ"),
+        Description = T("Joins the Headless ritual while it is open", "เข้าร่วมพิธีกรรม Headless ช่วงที่เปิด"),
+        Risky = true,
+    })
+    xDTaraZ.UI.Status(ritual, "Ritual", "Ritual is closed")
+
+    local esp = tab:AddRightGroupbox(T("Event ESP", "มองเห็นอีเวนต์"), "eye")
+    xDTaraZ.UI.KeyToggle(esp, "HalloweenEsp", {
+        Text = T("Event ESP", "มองเห็นอีเวนต์"),
+        Description = T("Shows candy, doors, pumpkins and the altar through walls", "แสดงลูกกวาด ประตู ฟักทอง และแท่นพิธีทะลุกำแพง"),
+    })
+    xDTaraZ.UI.Bind("HalloweenEspTypes", esp:AddDropdown("HalloweenEspTypes", {
+        Text = T("Show (empty = all)", "แสดง (ว่าง = ทั้งหมด)"),
+        Values = { "Candy", "Doors", "Pumpkins", "Altar" },
+        Multi = true,
+        Default = {},
+    }))
 end
 
 function xDTaraZ.UI.Ranch(tab)
@@ -7880,6 +9779,10 @@ function xDTaraZ.UI.PlayerTab(window)
     xDTaraZ.UI.CarryGuard(flyToggle)
 
     local misc = tab:AddRightGroupbox(T("Utility", "อรรถประโยชน์"), "gear")
+    xDTaraZ.UI.Toggle(misc, "InstantPrompt", {
+        Text = T("Instant E", "กด E ทันที"),
+        Description = T("Press to interact without holding the key", "กดเก็บหรือโต้ตอบได้เลย ไม่ต้องค้างปุ่ม"),
+    })
     xDTaraZ.UI.Toggle(misc, "AntiAfk", { Text = T("Anti AFK", "กันหลุด AFK") })
     xDTaraZ.UI.Toggle(misc, "AutoReconnect", { Text = T("Auto Reconnect", "เข้าเกมใหม่อัตโนมัติ"), Description = T("Joins back and reloads the hub after a disconnect", "หลุดแล้วเข้าเกมใหม่และโหลดสคริปต์ให้เอง") })
     misc:AddButton({ Text = T("Rejoin", "เข้าเซิร์ฟใหม่"), Func = xDTaraZ.UI.Detach("rejoin", xDTaraZ.Server.Rejoin) })
@@ -7908,6 +9811,7 @@ local function BuildTabs()
     window:AddTabSection(T("Farming", "ฟาร์ม"))
     try("ui eggs", xDTaraZ.UI.EggFarm, window)
     try("ui hatch", xDTaraZ.UI.Hatching, window)
+    try("ui halloween", xDTaraZ.UI.Halloween, window)
 
     window:AddTabSection(T("Progression", "พัฒนา"))
     try("ui pets", xDTaraZ.UI.PetsTab, window)
