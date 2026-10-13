@@ -41,7 +41,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 | **[BloxStrike](#-bloxstrike)** | Silent aim, aimbot, triggerbot, gun mods, skin changer, bunny hop, ESP |
 | **[+1 Stone Skipping](#-1-stone-skipping)** | Smart Kaitun, auto throw and train, best stones, auto rebirth, fast hatch, redeem codes |
 | **[Break and Steal an Egg](#-break-and-steal-an-egg)** | Instant steal, break eggs in any zone, upgrades-only filter, auto upgrades, bat troll, Kaitun |
-| **[Build the Pyramid!](#-build-the-pyramid)** | Auto farm with no walking, multi-place, auto train at the best gym, auto upgrade, redeem codes |
+| **[Build the Pyramid!](#-build-the-pyramid)** | Smart Progression, faster auto farm, pets and hatching, full ESP, skip cutscenes |
 
 ---
 
@@ -337,18 +337,19 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 <details>
 <summary><b>Features</b></summary>
 
-- **Auto Farm**: grabs a full load at the quarry and places it on the pyramid without walking, several slots at once, around four times faster than before
-- Return to your spot when the farm stops
-- **Auto Train Strength and Speed** at the best gym you have unlocked
-- **Balanced mode**: trains Strength only while the extra blocks per trip pay it back, then goes back to farming
-- Pick your own Bench and Treadmill gym, or let it use the best you have unlocked
-- **Auto Upgrade** buys the best upgrade first and saves up when it is close, or cheapest first or in order, with a coin reserve, plus Buy Now
-- Place Distance option, Spend Banked Blocks and Claim Free Gift
-- Redeem all codes, with the result for each one
-- Auto join the pool when a pyramid is completed *(beta)*
-- Teleport to the quarry, the pyramid, the pool, every gym and players
+- **Smart Progression**: works toward coin, pyramid, Strength and Speed goals with a session limit and coin reserve
+- **Auto Farm**, separate Auto Pickup and Auto Place, placement strategy, pacing and stop targets
+- **Auto Train Strength and Speed** at the best unlocked gym, training targets, Balanced mode and Train While Waiting
+- **Auto Pool** trains both stats when a completed pyramid unlocks it; Exit returns safely
+- **Auto Upgrade**: selected upgrades, level caps, best value, cheapest first or custom order, coin reserve and Buy Now
+- **Pets**: auto hatch, owned hatch modes, session budget, count and pet stop targets, equip best, equip, unequip, lock and unlock
+- **ESP** for players, quarry, pyramid, pool, gyms and eggs, with distance and display controls
+- **Spectate**, Auto Skip Cutscene and Skip Now
+- Separate bank resource controls, free gifts, codes and live farm status
+- Teleport to the quarry, pyramid, pool, gyms and players; return after farming, training or hatching
 - Speed, fly, noclip, infinite jump, anti AFK, FPS boost, disable 3D rendering, rejoin and server hop
-- Live status: coins, coins per minute, carry, level and pyramids completed
+- English / Thai UI, saved settings and mobile menu controls
+- Active automation starts off. Triple hatch requires ownership; upgrades and hatching require enough coins.
 
 </details>
 
