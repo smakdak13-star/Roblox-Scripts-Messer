@@ -1,4 +1,4 @@
--- Mario Hub UI · standalone build 2026-10-10
+-- Mario Hub UI · standalone build 2026-10-14
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -24,7 +24,6 @@ local Config = {
     Root = "mariohub",
     AssetDir = "mariohub/assets",
     ConfigRoot = "mariohub/configs",
-    KeyCache = "mariohub/key.txt",
     DefaultAssets = {
         logo = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/main/logo.png",
         logo_halloween = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/main/logo_halloween.png",
@@ -39,7 +38,7 @@ local Config = {
         Source = "https://raw.githubusercontent.com/google/fonts/main/ofl/kanit/Kanit-%s.ttf",
         Weights = { [400] = "Regular", [500] = "Medium", [600] = "SemiBold" },
     },
-    -- ไทย: glyph ไทยเล็กกว่าละติน ต้องขยายให้อ่านสบาย
+    -- Scale bonus for Thai glyphs to match Latin x-height
     ThaiSizeBonus = { Body = 2, Desc = 2, Display = 1, Strong = 1 },
     Text = { Title = 26, Header = 22, Group = 16, Label = 15, Desc = 13, Small = 12, Button = 15, Watermark = 13, Section = 13 },
     Window = {
@@ -50,9 +49,17 @@ local Config = {
         Radius = 12, Stroke = 3, Shadow = 6,
     },
     Metrics = {
-        Desktop = { Row = 32, Box = 32, Item = 30, Track = 10, Knob = 18, Switch = Vector2.new(42, 22), SwitchKnob = 16, Tab = 38, Check = 22 },
-        Touch = { Row = 38, Box = 36, Item = 36, Track = 12, Knob = 24, Switch = Vector2.new(50, 26), SwitchKnob = 20, Tab = 44, Check = 26 },
+        Desktop = { Row = 32, Box = 32, Item = 30, Track = 10, Knob = 18, Switch = Vector2.new(42, 22), SwitchKnob = 16, Tab = 38, Check = 22, Icon = 18, Depth = 4, Radius = 8 },
+        Touch = { Row = 38, Box = 36, Item = 36, Track = 12, Knob = 24, Switch = Vector2.new(50, 26), SwitchKnob = 20, Tab = 44, Check = 26, Icon = 20, Depth = 4, Radius = 8 },
     },
+    Motion = {
+        Speed = { Fast = 28, Normal = 20, Soft = 14, Slow = 10 },
+        Damping = 0.72,
+        BounceDamping = 0.46,
+        SquashDamping = 0.44,
+    },
+    Selectable = { PadX = 10, Bar = 4, BarWidth = 4, Radius = 8, HoverAlpha = 0.35 },
+    Button = { PadX = 14, IconGap = 6, Depth = 4, HoverLighten = 0.14 },
     Group = { Header = 36, PadX = 12, PadY = 10, Shadow = 4, Radius = 12, Stroke = 2 },
     Gap = { X = 8, Y = 6, Column = 12 },
     Page = { Pad = 14, ScrollBar = 6 },
@@ -68,7 +75,7 @@ local Config = {
         Linear = { Enum.EasingStyle.Linear, Enum.EasingDirection.InOut },
         Bounce = { Enum.EasingStyle.Bounce, Enum.EasingDirection.Out },
     },
-    Layer = { Window = 10, Watermark = 30, Float = 40, Key = 45, Overlay = 50, Tooltip = 55, Notify = 60, Intro = 70 },
+    Layer = { Window = 10, Watermark = 30, Float = 40, Overlay = 50, Modal = 52, Tooltip = 55, Notify = 60, Intro = 70 },
     LayoutPasses = 12,
     MeasureCacheLimit = 4000,
     DragThreshold = 6,
@@ -89,7 +96,7 @@ local function rgb(hex)
     return Color3.fromRGB(tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16))
 end
 
---@param spec ตารางสี hex ของธีม ใส่ Particle = { glyph, ตกลง?, hex } สำหรับละอองพื้นหลัง
+--@param spec Hex color palette table; Particle = { glyph, fallsDown, hex }
 local function Palette(spec)
     local palette = {}
     for token, value in pairs(spec) do
@@ -239,6 +246,10 @@ local State = {
 
 local Util = {}
 local Anim = {}
+local Motion = {}
+local Fx = {}
+local Reactive = {}
+local Tailwind = {}
 local Draw = {}
 local Sprite = {}
 local Assets = { Overrides = {}, Cache = {} }
@@ -247,15 +258,18 @@ local Particles = { Pool = {}, Enabled = true }
 local Lang = { Bound = {}, Listeners = setmetatable({}, { __mode = "k" }), InstanceListeners = {} }
 local Theme = { Colors = {}, Bound = {}, Renderers = setmetatable({}, { __mode = "k" }), InstanceRenderers = {} }
 local Layout = { Dirty = {}, All = setmetatable({}, { __mode = "k" }), Measured = {}, MeasuredCount = 0 }
-local Gui = {}
+local Icons = {}
+local Creator = {}
+local Gui = { Stack = {} }
 local Popup = {}
+local Dialog = {}
+local Sheet = {}
 local Tooltip = {}
 local Notify = {}
 local Watermark = {}
 local Float = {}
 local Keybinds = {}
 local Configs = { Folder = Config.ConfigRoot .. "/default" }
-local KeyGate = {}
 local Intro = {}
 local Widget = {}
 local Row = {}
@@ -283,8 +297,22 @@ local Selectable = setmetatable({}, { __index = Widget })
 Selectable.__index = Selectable
 local ListBox = setmetatable({}, { __index = Widget })
 ListBox.__index = ListBox
-local Progress = {}
+local Progress = setmetatable({}, { __index = Widget })
 Progress.__index = Progress
+local Stepper = setmetatable({}, { __index = Widget })
+Stepper.__index = Stepper
+local RangeSlider = setmetatable({}, { __index = Widget })
+RangeSlider.__index = RangeSlider
+local Segmented = setmetatable({}, { __index = Widget })
+Segmented.__index = Segmented
+local MultiChips = setmetatable({}, { __index = Widget })
+MultiChips.__index = MultiChips
+local StatWidget = setmetatable({}, { __index = Widget })
+StatWidget.__index = StatWidget
+local StatusWidget = setmetatable({}, { __index = Widget })
+StatusWidget.__index = StatusWidget
+local TableWidget = setmetatable({}, { __index = Widget })
+TableWidget.__index = TableWidget
 
 local Window = {}
 Window.__index = Window
@@ -292,6 +320,234 @@ local Tab = {}
 Tab.__index = Tab
 local Groupbox = setmetatable({}, { __index = Container })
 Groupbox.__index = Groupbox
+
+Reactive.Stack = {}
+Reactive.BatchDepth = 0
+Reactive.Pending = {}
+Reactive.Disposers = {}
+
+function Reactive.Track(subscribers)
+    local active = Reactive.Stack[#Reactive.Stack]
+    if not active then
+        return
+    end
+    subscribers[active] = true
+    active.Deps[subscribers] = true
+end
+
+function Reactive.Trigger(subscribers)
+    for effect in pairs(subscribers) do
+        if Reactive.BatchDepth > 0 then
+            Reactive.Pending[effect] = true
+        else
+            Reactive.RunEffect(effect)
+        end
+    end
+end
+
+function Reactive.CleanupEffect(effect)
+    if effect.Cleanup then
+        pcall(effect.Cleanup)
+        effect.Cleanup = nil
+    end
+    for dep in pairs(effect.Deps) do
+        dep[effect] = nil
+    end
+    table.clear(effect.Deps)
+end
+
+function Reactive.RunEffect(effect)
+    if effect.Disposed or Library.Unloaded then
+        return
+    end
+    Reactive.CleanupEffect(effect)
+    table.insert(Reactive.Stack, effect)
+    local ok, cleanup = pcall(effect.Runner)
+    table.remove(Reactive.Stack)
+    if ok and type(cleanup) == "function" then
+        effect.Cleanup = cleanup
+    end
+end
+
+function Reactive.Effect(runner)
+    local effect = { Runner = runner, Deps = {}, Disposed = false, Cleanup = nil }
+    local function Dispose()
+        if effect.Disposed then
+            return
+        end
+        effect.Disposed = true
+        Reactive.CleanupEffect(effect)
+    end
+    table.insert(Reactive.Disposers, Dispose)
+    Reactive.RunEffect(effect)
+    return Dispose
+end
+
+function Reactive.Batch(callback)
+    Reactive.BatchDepth += 1
+    pcall(callback)
+    Reactive.BatchDepth -= 1
+    if Reactive.BatchDepth > 0 then
+        return
+    end
+    local queued = {}
+    for effect in pairs(Reactive.Pending) do
+        table.insert(queued, effect)
+    end
+    table.clear(Reactive.Pending)
+    for _, effect in ipairs(queued) do
+        Reactive.RunEffect(effect)
+    end
+end
+
+local RefMethods = {}
+
+function RefMethods:Get()
+    Reactive.Track(self._subs)
+    return self._current
+end
+
+function RefMethods:Set(nextValue)
+    if self._current == nextValue and type(nextValue) ~= "table" then
+        return
+    end
+    local previous = self._current
+    self._current = nextValue
+    Reactive.Trigger(self._subs)
+    for _, listener in ipairs(self._listeners) do
+        pcall(listener, nextValue, previous)
+    end
+end
+
+function RefMethods:Update(transform)
+    self:Set(transform(self._current))
+end
+
+function RefMethods:Subscribe(listener, immediate)
+    table.insert(self._listeners, listener)
+    if immediate then
+        pcall(listener, self._current, nil)
+    end
+    return function()
+        local index = table.find(self._listeners, listener)
+        if index then
+            table.remove(self._listeners, index)
+        end
+    end
+end
+
+local RefMeta = {
+    __index = function(self, key)
+        if key == "Value" then
+            Reactive.Track(self._subs)
+            return self._current
+        end
+        return RefMethods[key]
+    end,
+    __newindex = function(self, key, nextValue)
+        if key == "Value" then
+            RefMethods.Set(self, nextValue)
+            return
+        end
+        rawset(self, key, nextValue)
+    end,
+}
+
+function Reactive.IsRef(candidate)
+    return type(candidate) == "table" and rawget(candidate, "_isRef") == true
+end
+
+function Reactive.Ref(initial)
+    return setmetatable({
+        _isRef = true,
+        _current = initial,
+        _subs = {},
+        _listeners = {},
+    }, RefMeta)
+end
+
+function Reactive.Computed(getter)
+    local derived = Reactive.Ref(nil)
+    Reactive.Effect(function()
+        local ok, evaluated = pcall(getter)
+        if ok then
+            derived:Set(evaluated)
+        end
+    end)
+    return derived
+end
+
+function Reactive.Watch(source, callback, options)
+    options = options or {}
+    if type(source) == "string" and Library.Options[source] then
+        source = Library.Options[source]
+    end
+    if type(source) == "table" and source.Ref then
+        return source.Ref:Subscribe(callback, options.Immediate)
+    end
+    if Reactive.IsRef(source) then
+        return source:Subscribe(callback, options.Immediate)
+    end
+    if type(source) == "function" then
+        local computed = Reactive.Computed(source)
+        return computed:Subscribe(callback, options.Immediate)
+    end
+    return function() end
+end
+
+local StoreProto = {}
+StoreProto.__index = StoreProto
+
+function StoreProto:Ref(key)
+    local slot = self._refs[key]
+    if not slot then
+        slot = Reactive.Ref(nil)
+        self._refs[key] = slot
+    end
+    return slot
+end
+
+function StoreProto:Get(key)
+    return self:Ref(key):Get()
+end
+
+function StoreProto:Set(key, nextValue)
+    self:Ref(key):Set(nextValue)
+end
+
+function StoreProto:Update(key, transform)
+    local slot = self:Ref(key)
+    slot:Set(transform(slot:Get()))
+end
+
+function StoreProto:Watch(key, callback, immediate)
+    return self:Ref(key):Subscribe(callback, immediate)
+end
+
+function Reactive.Store(initialState)
+    local store = setmetatable({ _refs = {}, State = {} }, StoreProto)
+    for key, initial in pairs(initialState or {}) do
+        store._refs[key] = Reactive.Ref(initial)
+    end
+    setmetatable(store.State, {
+        __index = function(_, key)
+            return store:Get(key)
+        end,
+        __newindex = function(_, key, nextValue)
+            store:Set(key, nextValue)
+        end,
+    })
+    return store
+end
+
+function Reactive.DisposeAll()
+    for _, dispose in ipairs(Reactive.Disposers) do
+        pcall(dispose)
+    end
+    table.clear(Reactive.Disposers)
+    table.clear(Reactive.Pending)
+    table.clear(Reactive.Stack)
+end
 
 
 function Util.Try(callback, ...)
@@ -407,8 +663,8 @@ function Util.CustomAsset(path)
     if type(getcustomasset) ~= "function" then
         return nil
     end
-    local finished, asset = Util.Await(Config.HttpTimeout, getcustomasset, path)
-    return finished and type(asset) == "string" and asset:find("^rbxasset") and asset or nil
+    local ok, asset = pcall(getcustomasset, path)
+    return ok and type(asset) == "string" and asset:find("^rbxasset") and asset or nil
 end
 
 ---isfile through SafeFile would read a stub's nil as "exists".
@@ -458,7 +714,7 @@ function Util.EnsureFolder(path)
     return true
 end
 
--- เก็บ UTF-8 ไว้ (ชื่อไทยได้) ตัดแค่อักขระที่ path ไฟล์ไม่รับ
+-- Keep UTF-8 characters (including Thai); strip only invalid path characters
 function Util.Sanitize(name)
     local clean = tostring(name):gsub('[%c/\\:%*%?"<>|]', ""):gsub("^%s+", ""):gsub("%s+$", "")
     return clean ~= "" and clean or "config"
@@ -511,12 +767,29 @@ function Util.FromHex(text)
     return Color3.fromRGB(tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16))
 end
 
+Anim.Loops = {}
+Anim.GroupState = {}
+Anim.NoopSignal = {
+    Once = function(_, fn)
+        if type(fn) == "function" then
+            task.defer(fn)
+        end
+    end,
+}
+Anim.NoopTween = { Completed = Anim.NoopSignal, Cancel = function() end, Pause = function() end, Play = function() end }
+
 function Anim.Info(duration, ease, repeatCount, reverses, delay)
     local style = Config.Ease[ease or "Out"]
     return TweenInfo.new(duration or Config.Tween.Normal, style[1], style[2], repeatCount or 0, reverses or false, delay or 0)
 end
 
 function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)
+    if duration == 0 and (repeatCount or 0) == 0 and (delay or 0) == 0 then
+        for prop, val in pairs(goal) do
+            inst[prop] = val
+        end
+        return Anim.NoopTween
+    end
     local tween = TweenService:Create(inst, Anim.Info(duration, ease, repeatCount, reverses, delay), goal)
     tween:Play()
     if repeatCount == -1 then
@@ -527,12 +800,57 @@ function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)
     return tween
 end
 
+-- Register a visibility-gated infinite tween under a named lifecycle group
+function Anim.Loop(group, inst, goal, duration, ease, reverses, delay)
+    local tween = TweenService:Create(inst, Anim.Info(duration, ease, -1, reverses, delay), goal)
+    local list = Anim.Loops[group]
+    if not list then
+        list = {}
+        Anim.Loops[group] = list
+    end
+    local active = Anim.GroupState[group] ~= false
+    local entry = { Tween = tween, Inst = inst, Playing = active }
+    table.insert(list, entry)
+    if active then
+        tween:Play()
+    end
+    inst.Destroying:Once(function()
+        tween:Cancel()
+        entry.Dead = true
+    end)
+    return tween
+end
+
+function Anim.SetGroupActive(group, active)
+    active = active == true
+    if Anim.GroupState[group] == active then
+        return
+    end
+    Anim.GroupState[group] = active
+    local list = Anim.Loops[group]
+    if not list then
+        return
+    end
+    for index = #list, 1, -1 do
+        local entry = list[index]
+        if entry.Dead or not entry.Inst or not entry.Inst.Parent then
+            table.remove(list, index)
+        elseif active and not entry.Playing then
+            entry.Playing = true
+            entry.Tween:Play()
+        elseif not active and entry.Playing then
+            entry.Playing = false
+            entry.Tween:Pause()
+        end
+    end
+end
+
 function Anim.Pop(scale, from)
     scale.Scale = from or 0.85
     return Anim.Tween(scale, { Scale = 1 }, Config.Tween.Pop, "Back")
 end
 
---@param rise จำนวน px ที่เด้งขึ้น (กล่องโดนโขกแบบในเกม)
+--@param rise Vertical bounce height in px (Mario block bump)
 function Anim.Bump(frame, rise)
     if frame:GetAttribute("Bumping") then
         return
@@ -577,7 +895,7 @@ function Anim.Fade(root, alpha, duration)
     end
 end
 
---@param origin UDim2 จุดที่เหรียญเด้งออก ภายใน parent
+--@param origin UDim2 spawn position inside parent
 function Anim.CoinPop(parent, origin, size)
     local coin = Sprite.New(parent, "coin", size or 20)
     coin.AnchorPoint = Vector2.new(0.5, 1)
@@ -607,36 +925,55 @@ function Theme.Apply(name)
     for token, color in pairs(palette) do
         Theme.Colors[token] = color
     end
-    Theme.Prune()
     for inst, map in pairs(Theme.Bound) do
-        Theme.Paint(inst, map)
+        if inst.Parent then
+            Theme.Paint(inst, map)
+        else
+            Theme.Bound[inst] = nil
+        end
     end
-    for _, registry in ipairs({ Theme.Renderers, Theme.InstanceRenderers }) do
-        for _, render in pairs(registry) do
+    for owner, render in pairs(Theme.Renderers) do
+        Util.Try(render)
+    end
+    for inst, render in pairs(Theme.InstanceRenderers) do
+        if inst.Parent then
             Util.Try(render)
+        else
+            Theme.InstanceRenderers[inst] = nil
         end
     end
 end
 
--- registry ที่ key เป็น Instance ต้องเป็น strong table จึงล้างของที่ถูก Destroy ออกเองเป็นรอบ
+-- O(1) parent check to prune destroyed Instance keys from registries
 function Theme.Prune()
-    local root = State.Gui
-    if not root then
-        return
-    end
     for _, registry in ipairs({ Theme.Bound, Theme.InstanceRenderers, Lang.Bound, Lang.InstanceListeners, Fonts.Texts }) do
         for inst in pairs(registry) do
-            if not inst:IsDescendantOf(root) then
+            if not inst.Parent then
                 registry[inst] = nil
             end
         end
     end
 end
 
+function Theme.UnbindTree(root)
+    if not root then
+        return
+    end
+    local list = root:GetDescendants()
+    table.insert(list, root)
+    for _, inst in ipairs(list) do
+        Theme.Bound[inst] = nil
+        Theme.InstanceRenderers[inst] = nil
+        Lang.Bound[inst] = nil
+        Lang.InstanceListeners[inst] = nil
+        Fonts.Texts[inst] = nil
+    end
+end
+
 function Theme.Paint(inst, map)
     for property, token in pairs(map) do
         local color = Theme.Colors[token]
-        if color ~= nil then
+        if color ~= nil and inst[property] ~= color then
             inst[property] = color
         end
     end
@@ -693,15 +1030,6 @@ Lang.Strings = {
     About = { EN = "About", TH = "เกี่ยวกับ" },
     Unload = { EN = "Unload hub", TH = "ปิดสคริปต์" },
     Rejoin = { EN = "Rejoin", TH = "เข้าเซิร์ฟใหม่" },
-    KeyTitle = { EN = "ENTER KEY", TH = "ใส่คีย์" },
-    KeyNote = { EN = "Paste your key to start the adventure.", TH = "วางคีย์เพื่อเริ่มผจญภัย" },
-    KeyPlaceholder = { EN = "Paste key here", TH = "วางคีย์ที่นี่" },
-    GetKey = { EN = "Get key", TH = "รับคีย์" },
-    CheckKey = { EN = "Check key", TH = "ตรวจคีย์" },
-    KeyCopied = { EN = "Key link copied", TH = "คัดลอกลิงก์รับคีย์แล้ว" },
-    KeyChecking = { EN = "Checking...", TH = "กำลังตรวจ..." },
-    KeyInvalid = { EN = "Invalid key", TH = "คีย์ไม่ถูกต้อง" },
-    KeyValid = { EN = "Key accepted", TH = "คีย์ถูกต้อง" },
     IntroSteps = {
         EN = { "Warming up the warp pipe...", "Collecting coins...", "Building the castle...", "Let's-a go!" },
         TH = { "กำลังอุ่นท่อวาร์ป...", "กำลังเก็บเหรียญ...", "กำลังสร้างปราสาท...", "ลุยกันเลย!" },
@@ -720,7 +1048,7 @@ function Lang.HasThai(text)
     return text:find("\224[\184\185]") ~= nil
 end
 
---@return string ตามภาษาปัจจุบัน รับ {EN,TH} หรือ "English · ไทย" หรือ string ธรรมดา
+--@return string localized for active language from {EN,TH}, "English / Thai", or plain string
 function Lang.Resolve(spec)
     if type(spec) == "table" then
         return spec[State.Language] or spec.EN or spec.TH or ""
@@ -750,7 +1078,7 @@ function Lang.SearchText(spec)
     return tostring(spec or ""):lower()
 end
 
---@param transform ฟังก์ชันแปลงข้อความก่อนแสดง (เช่น string.upper) ไม่ใส่ก็ได้
+--@param transform Optional text formatter (e.g., string.upper)
 function Lang.Bind(inst, spec, property, transform)
     local binding = { Spec = spec, Property = property or "Text", Transform = transform }
     Lang.Bound[inst] = binding
@@ -796,7 +1124,7 @@ Fonts.ThaiWeights = { Display = Enum.FontWeight.SemiBold, Body = Enum.FontWeight
 Fonts.ThaiFallback = { Display = Enum.Font.BuilderSansBold, Body = Enum.Font.BuilderSansBold, Desc = Enum.Font.BuilderSansMedium, Strong = Enum.Font.BuilderSansBold }
 Fonts.Faces = {}
 
---@return Font ตามชนิดและภาษาปัจจุบัน (ไทยใช้ Kanit ถ้าโหลดได้)
+--@return Font face for role and active language (Kanit when Thai font loaded)
 function Fonts.Face(kind)
     local thai = State.Language == "TH" and Fonts.ThaiWeights[kind] ~= nil
     local key = (thai and (Fonts.Thai and "TH" or "THF") or "EN") .. kind
@@ -982,7 +1310,7 @@ function Draw.List(parent, gap, horizontal, alignX, alignY)
     })
 end
 
---@param spec ข้อความหรือ {EN,TH} ผูกกับระบบภาษาให้เอง
+--@param spec Text string or {EN,TH} table bound to active language
 function Draw.Text(props, font, size, token, spec)
     props.BackgroundTransparency = 1
     props.Text = props.Text or ""
@@ -1021,7 +1349,7 @@ function Draw.Box(className, props, fill, stroke, radius, thickness)
     return box
 end
 
---@return holder, face, shade ปุ่มนูนแบบบล็อก กดแล้ว face ยุบลงบนเงา
+--@return holder, face, shade, depth Raised block with shadow depth
 function Draw.Block(parent, faceToken, shadeToken, radius, depth)
     depth = depth or 4
     local holder = Draw.New("Frame", { BackgroundTransparency = 1, Parent = parent })
@@ -1058,7 +1386,7 @@ function Draw.Cloud(parent, width, token)
     return cloud
 end
 
--- โลโก้ตามธีม: ธีมที่มี Logo ใช้รูปของธีมนั้น ไม่มีใช้ logo ปกติ โหลดไม่ได้วาด M เอง
+-- Resolve theme logo asset or fall back to default logo / vector M emblem
 function Draw.Emblem(parent, size)
     local holder = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Parent = parent })
     local picture = Draw.New("ImageLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Fit, Visible = false, Parent = holder })
@@ -1070,7 +1398,7 @@ function Draw.Emblem(parent, size)
         drawn.Visible = content == nil
         picture.Size = UDim2.fromScale(Theme.Colors.Logo and 1.25 or 1, Theme.Colors.Logo and 1.25 or 1)
     end)
-    Anim.Tween(picture, { Rotation = 6 }, 1.6, "Sine", -1, true)
+    Anim.Loop("Emblem", picture, { Rotation = 6 }, 1.6, "Sine", true)
     return holder
 end
 
@@ -1099,12 +1427,15 @@ function Draw.Bricks(parent, columns, token)
     local mortar = {}
     for row = 0, 1 do
         local shift = row == 0 and 0 or 0.5 / columns
-        for column = 0, columns do
-            table.insert(mortar, Draw.New("Frame", {
-                Position = UDim2.new(column / columns + shift, 0, row * 0.5, 0),
-                Size = UDim2.new(0, 2, 0.5, 0),
-                Parent = parent,
-            }))
+        for column = 1, columns - 1 do
+            local xScale = column / columns + shift
+            if xScale > 0.02 and xScale < 0.98 then
+                table.insert(mortar, Draw.New("Frame", {
+                    Position = UDim2.new(xScale, 0, row * 0.5, 0),
+                    Size = UDim2.new(0, 2, 0.5, 0),
+                    Parent = parent,
+                }))
+            end
         end
     end
     local seam = Draw.New("Frame", { Position = UDim2.new(0, 0, 0.5, -1), Size = UDim2.new(1, 0, 0, 2), Parent = parent })
@@ -1140,7 +1471,7 @@ function Assets.Download(name, url)
     return Util.CustomAsset(path)
 end
 
---@return content id ของรูปที่ผู้ใช้ตั้งทับไว้ หรือ nil ถ้าใช้ของวาดเอง
+--@return Resolved asset content ID override, or nil for procedural sprites
 function Assets.Resolve(name)
     local key = tostring(name):lower()
     local cached = Assets.Cache[key]
@@ -1300,6 +1631,7 @@ function Sprite.Resolve(name)
     return "qblock"
 end
 
+-- 2D overdraw-aware greedy rectangle meshing: base colors bridge across detail pixels painted on higher ZIndex layers
 function Sprite.Template(name)
     if Sprite.Templates[name] then
         return Sprite.Templates[name]
@@ -1309,30 +1641,105 @@ function Sprite.Template(name)
     local recolor = swap and swap.swap or {}
     local height, width = #rows, #rows[1]
     local holder = Draw.New("Frame", { Name = "Sprite", BackgroundTransparency = 1 })
-    for y, line in ipairs(rows) do
-        local x = 1
-        while x <= width do
-            local char = line:sub(x, x)
-            local stop = x
-            while stop < width and line:sub(stop + 1, stop + 1) == char do
-                stop += 1
+    local freq, colors = {}, {}
+    for y = 1, height do
+        local line = rows[y]
+        for x = 1, width do
+            local ch = line:sub(x, x)
+            if ch ~= "." then
+                if not freq[ch] then
+                    freq[ch] = 0
+                    table.insert(colors, ch)
+                end
+                freq[ch] += 1
             end
-            if char ~= "." then
-                Draw.New("Frame", {
-                    BackgroundColor3 = Sprite.Palette[recolor[char] or char] or Sprite.Palette.k,
-                    Position = UDim2.fromScale((x - 1) / width, (y - 1) / height),
-                    Size = UDim2.fromScale((stop - x + 1) / width, 1 / height),
-                    Parent = holder,
-                })
+        end
+    end
+    table.sort(colors, function(a, b)
+        if (a == "k") ~= (b == "k") then
+            return a == "k"
+        end
+        if freq[a] ~= freq[b] then
+            return freq[a] > freq[b]
+        end
+        return a < b
+    end)
+    local order = {}
+    for idx, ch in ipairs(colors) do
+        order[ch] = idx
+    end
+    local painted = {}
+    for layerIdx, col in ipairs(colors) do
+        local fill = Sprite.Palette[recolor[col] or col] or Sprite.Palette.k
+        for y = 1, height do
+            local line = rows[y]
+            for x = 1, width do
+                local cellIdx = (y - 1) * width + x
+                if line:sub(x, x) == col and painted[cellIdx] ~= col then
+                    local stopX = x
+                    while stopX < width do
+                        local nextCh = line:sub(stopX + 1, stopX + 1)
+                        if nextCh == col or (order[nextCh] and order[nextCh] > layerIdx) then
+                            stopX += 1
+                        else
+                            break
+                        end
+                    end
+                    while stopX > x and line:sub(stopX, stopX) ~= col do
+                        stopX -= 1
+                    end
+                    local stopY = y
+                    while stopY < height do
+                        local nextLine = rows[stopY + 1]
+                        local okRow = true
+                        for cx = x, stopX do
+                            local nextCh = nextLine:sub(cx, cx)
+                            if nextCh ~= col and not (order[nextCh] and order[nextCh] > layerIdx) then
+                                okRow = false
+                                break
+                            end
+                        end
+                        if not okRow then
+                            break
+                        end
+                        stopY += 1
+                    end
+                    while stopY > y do
+                        local checkLine = rows[stopY]
+                        local hasCol = false
+                        for cx = x, stopX do
+                            if checkLine:sub(cx, cx) == col and painted[(stopY - 1) * width + cx] ~= col then
+                                hasCol = true
+                                break
+                            end
+                        end
+                        if hasCol then
+                            break
+                        end
+                        stopY -= 1
+                    end
+                    for cy = y, stopY do
+                        local base = (cy - 1) * width
+                        for cx = x, stopX do
+                            painted[base + cx] = col
+                        end
+                    end
+                    Draw.New("Frame", {
+                        BackgroundColor3 = fill,
+                        Position = UDim2.fromScale((x - 1) / width, (y - 1) / height),
+                        Size = UDim2.fromScale((stopX - x + 1) / width, (stopY - y + 1) / height),
+                        ZIndex = layerIdx,
+                        Parent = holder,
+                    })
+                end
             end
-            x = stop + 1
         end
     end
     Sprite.Templates[name] = holder
     return holder
 end
 
---@param size ความกว้างเป็น px ควรเป็นพหุคูณ 12 ภาพจะคม
+--@param size Width in px (multiples of 12 align cleanly to the 12x12 grid)
 function Sprite.New(parent, name, size)
     local key = Sprite.Resolve(name)
     local image = Assets.Resolve(tostring(name):lower()) or Assets.Resolve(key)
@@ -1347,9 +1754,874 @@ function Sprite.New(parent, name, size)
     return sprite
 end
 
+-- Mario Hub Native Sprite + Crisp Vector SVG Icon Engine (Zero Emoji)
+local ExtraSprites = {
+    sword = {
+        ".........kkk", "........kwwk", ".......kwwwk", "......kwwwk.",
+        ".....kwwwk..", ".kk.kwwwk...", "kyykwwwk....", ".kyyyyk.....",
+        "..kyykll....", ".kmmkyk.....", "kmmk.kk.....", "kkk.........",
+    },
+    crosshair = {
+        "....kkkk....", "..kkrrrrkk..", ".kr..kk..rk.", ".kr..rr..rk.",
+        "krr.krrk.rrk", "kkkkryyrkkkk", "kkkkryyrkkkk", "krr.krrk.rrk",
+        ".kr..rr..rk.", ".kr..kk..rk.", "..kkrrrrkk..", "....kkkk....",
+    },
+    crown = {
+        "............", ".kk..kk..kk.", "kyykkyykkyyk", "kyyyyyyyyyyk",
+        "kyrrybbyrryk", "kyyyyyyyyyyk", "kyyyyyyyyyyk", ".kyyyyyyyyk.",
+        ".kYYYYYYYYk.", ".kkkkkkkkkk.", "............", "............",
+    },
+    gem = {
+        "............", "...kkkkkk...", "..kbbbbbbk..", ".kbwwbbbbbk.",
+        "kbwwbbbbbbbk", "kbbbbbbbbbbk", ".kbbbbbbbbk.", "..kbbbbbbk..",
+        "...kbbbbk...", "....kbbk....", ".....kk.....", "............",
+    },
+    dice = {
+        ".kkkkkkkkkk.", "kwwwwwwwwwwk", "kwkkwwwwkkwk", "kwkkwwwwkkwk",
+        "kwwwwwwwwwwk", "kwwwwkkwwwwk", "kwwwwkkwwwwk", "kwwwwwwwwwwk",
+        "kwkkwwwwkkwk", "kwkkwwwwkkwk", "kwwwwwwwwwwk", ".kkkkkkkkkk.",
+    },
+    paw = {
+        "............", ".kk..kk..kk.", "kmmkkmk.kmmk", "kmmkkmk.kmmk",
+        ".kk..kk..kk.", "...kkkkkk...", "..kmmmmmmk..", ".kmmssssmmk.",
+        ".kmssssssmk.", ".kmmmmmmmmk.", "..kkkkkkkk..", "............",
+    },
+    egg = {
+        "....kkkk....", "...kwwwwk...", "..kwwggwwk..", ".kwwggggwwk.",
+        ".kwwwwwwwwk.", "kwwggwwggwwk", "kwwggwwggwwk", "kwwwwwwwwwwk",
+        ".kwwwwwwwwk.", ".kwwggggwwk.", "..kkwwwwkk..", "....kkkk....",
+    },
+    hammer = {
+        "..kkkkkkkk..", ".knnnnnnnnk.", ".knwwnnnnnk.", ".knnnnnnnnk.",
+        "..kkkkmmkk..", ".....kmmk...", ".....kmmk...", ".....kmmk...",
+        ".....kmmk...", ".....kmmk...", ".....kmmk...", ".....kkkk...",
+    },
+    car = {
+        "............", "...kkkkkk...", "..krrrrrrk..", ".krrbbbbwwk.",
+        "krrrrrrrrrrk", "krrrrrrrryyk", "kkkkkkkkkkkk", ".knnkkkkknn.",
+        ".knwk..knwk.", "..kk....kk..", "............", "............",
+    },
+    chest = {
+        ".kkkkkkkkkk.", "kBBBBBBBBBBk", "kByyyyyyyyBk", "kBBBBBBBBBBk",
+        "kkkkkyykkkkk", "kBBBkyykBBBk", "kBBBkyykBBBk", "kBBBBBBBBBBk",
+        "kBmmmmmmmmBk", "kBBBBBBBBBBk", ".kkkkkkkkkk.", "............",
+    },
+    lightning = {
+        "......kkkk..", ".....kyyyk..", "....kyyyk...", "...kyyyk....",
+        "..kyyyyykkkk", ".kyyyyyyyyyk", "....kkkkkyyk", "....kyyykyk.",
+        "...kyyyk....", "..kyyyk.....", ".kyyk.......", ".kkk........",
+    },
+    magnet = {
+        ".kkkk..kkkk.", "krrrrk.krrrk", "krwwrk.krwrk", "knnnnk.knnnk",
+        "knnnnk.knnnk", "krrrrk.krrrk", "krrrrkkrrrrk", ".krrrrrrrrk.",
+        ".krrrrrrrrk.", "..kkkkkkkk..", "............", "............",
+    },
+    skull = {
+        "...kkkkkk...", "..kwwwwwwk..", ".kwwwwwwwwk.", "kwwkkwwkkwwk",
+        "kwwkkwwkkwwk", "kwwwwwwwwwwk", ".kwwwkkwwwk.", "..kwwwwwwk..",
+        "..kwkwkwkwk.", "...kkkkkk...", "............", "............",
+    },
+    feather = {
+        "........kkk.", "......kkwwwk", ".....kwwwwwk", "....kwwbbwwk",
+        "...kwwbbwwk.", "..kwwbbwwk..", "..kwbbwwk...", ".kwwbwwk....",
+        ".kwbwwk.....", ".kyyyk......", "kyyk........", "kkk.........",
+    },
+    trophy = {
+        ".kkkkkkkkkk.", "kyyyyyyyyyyk", "kykkyyyykkyk", "kykkywwykkyk",
+        ".kyyyyyyyyk.", "..kyyyyyyk..", "...kyyyyk...", "....kyyk....",
+        "....kyyk....", "..kkyyyykk..", ".kkkkkkkkkk.", "............",
+    },
+}
 
--- layout แบบ ImGui: แต่ละ container มี cursor ของตัวเอง item ต่อกันลงล่าง SameLine วางต่อขวา
--- ความกว้าง item: nil = เต็มที่เหลือ, 0<w<=1 = สัดส่วน, w>1 = px, w<0 = ที่เหลือลบ px (เหมือน ImGui)
+for spriteName, grid in pairs(ExtraSprites) do
+    Sprite.Art[spriteName] = grid
+end
+
+Sprite.Swaps.blueshell = { base = "shell", swap = { g = "b", G = "P" } }
+Sprite.Swaps.iceflower = { base = "flower", swap = { r = "b", y = "w" } }
+Sprite.Swaps.goldmushroom = { base = "mushroom", swap = { r = "y", w = "q" } }
+
+local ExtraAliases = {
+    main = "mushroom", home = "castle", general = "qblock", hub = "star",
+    combat = "sword", sword = "sword", swords = "sword", weapon = "sword", knife = "sword",
+    aimbot = "crosshair", aim = "crosshair", sniper = "crosshair", target = "crosshair", crosshair = "crosshair", gun = "crosshair",
+    visuals = "boo", esp = "boo", eye = "boo", camera = "boo", radar = "crosshair",
+    player = "feather", user = "oneup", users = "oneup", movement = "feather", speed = "lightning",
+    zap = "lightning", bolt = "lightning", fly = "feather", jump = "feather", run = "lightning",
+    shield = "shell", defense = "shell", god = "star", armor = "blueshell", safe = "shell",
+    teleport = "pipe", warp = "pipe", compass = "pipe", map = "pipe", globe = "pipe",
+    auto = "star", farm = "star", sparkles = "star", wand = "star", bot = "gear",
+    coin = "coin", money = "coin", cash = "coin", shop = "coin", bag = "chest", cart = "chest",
+    gem = "gem", diamond = "gem", crown = "crown", vip = "crown", rank = "trophy", trophy = "trophy",
+    gift = "chest", crate = "chest", chest = "chest", box = "qblock", package = "qblock", airdrop = "chest",
+    loot = "magnet", magnet = "magnet", collect = "magnet",
+    pet = "paw", paw = "paw", animal = "paw", mount = "paw",
+    egg = "egg", hatch = "egg",
+    dice = "dice", roll = "dice", luck = "star", spin = "dice",
+    hammer = "hammer", forge = "hammer", craft = "hammer", build = "brick", pickaxe = "hammer",
+    car = "car", vehicle = "car", drive = "car", race = "flag",
+    skull = "skull", kill = "skull", murder = "skull", danger = "bomb", bomb = "bomb",
+    heart = "heart", health = "heart", heal = "oneup",
+    key = "key", lock = "key", unlock = "key",
+    flag = "flag", quest = "flag", play = "flag",
+    settings = "gear", cog = "gear", sliders = "gear", config = "qblock",
+    palette = "flower", theme = "flower",
+    info = "qblock", bell = "coin", warning = "bomb", alert = "bomb",
+    check = "star", save = "qblock", refresh = "pipe", trash = "bomb",
+    search = "boo", terminal = "brick", code = "qblock", chart = "trophy", stats = "trophy",
+}
+
+for aliasKey, targetSprite in pairs(ExtraAliases) do
+    Sprite.Alias[aliasKey] = targetSprite
+end
+
+Icons.Rules = {
+    { "aimbot|silent|sniper|crosshair|shoot|gun|ยิง|ปืน|เล็ง", "crosshair" },
+    { "combat|sword|weapon|knife|kill|murder|sheriff|hit|attack|fight|ต่อสู้|ฆ่า|อาวุธ|ดาบ", "sword" },
+    { "visual|esp|chams|wallhack|highlight|tracer|fov|camera|see|มอง|แสง|เรดาร์", "boo" },
+    { "teleport|warp|island|location|place|spawn|zone|map|วาร์ป|เกาะ|สถานที่|แมพ", "pipe" },
+    { "pet|animal|mount|ride|สัตว์|ขี่", "paw" },
+    { "egg|hatch|ไข่|สุ่มไข่", "egg" },
+    { "dice|roll|spin|gacha|ลูกเต๋า|ทอย|สุ่ม", "dice" },
+    { "forge|craft|upgrade|mine|dig|ตีบวก|หลอม|ขุด|อัพเกรด", "hammer" },
+    { "build|pyramid|brick|สร้าง|พีระมิด", "brick" },
+    { "car|vehicle|drive|race|drift|รถ|ขับ|แข่ง", "car" },
+    { "shop|buy|sell|merchant|market|store|trade|coin|cash|money|ร้าน|ซื้อ|ขาย|เงิน", "coin" },
+    { "loot|magnet|collect|grab|ดูด|เก็บ", "magnet" },
+    { "airdrop|crate|chest|drop|gift|กล่อง|แอร์ดรอป", "chest" },
+    { "speed|dash|bolt|zap|ความเร็ว|พุ่ง", "lightning" },
+    { "player|movement|walk|jump|fly|noclip|stamina|ผู้เล่น|วิ่ง|กระโดด|บิน", "feather" },
+    { "defense|shield|god|anti|safe|guard|bypass|ป้องกัน|อมตะ|กันแบน", "shell" },
+    { "rank|vip|king|boss|crown|ยศ", "crown" },
+    { "stat|status|leaderboard|score|trophy|สถานะ|อันดับ|คะแนน", "trophy" },
+    { "quest|mission|flag|start|เควส|ภารกิจ", "flag" },
+    { "theme|color|palette|style|ธีม|สี", "flower" },
+    { "setting|config|ui|menu|keybind|language|ตั้งค่า|เมนู|ภาษา", "gear" },
+    { "auto|farm|grind|loop|bot|ออโต้|ฟาร์ม|บอท", "star" },
+    { "main|home|general|hub|หลัก|ทั่วไป", "mushroom" },
+}
+
+-- Crisp SVG-style geometric vector primitives for UI chrome (search, close, check, chevrons, plus, minus, grip)
+local function DrawVectorLine(parent, pos, size, rot, token)
+    return Draw.Box("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = pos,
+        Size = size,
+        Rotation = rot or 0,
+        Parent = parent,
+    }, token or "Text", nil, UDim.new(1, 0))
+end
+
+local function DrawLCorner(parent, pos, size, rot, thickness, token)
+    local pivot = Draw.New("Frame", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = pos,
+        Size = size,
+        Rotation = rot,
+        Parent = parent,
+    })
+    Draw.Box("Frame", {
+        Position = UDim2.fromScale(0, 0),
+        Size = UDim2.new(0, thickness, 1, 0),
+        Parent = pivot,
+    }, token or "Text", nil, UDim.new(1, 0))
+    Draw.Box("Frame", {
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.fromScale(0, 1),
+        Size = UDim2.new(1, 0, 0, thickness),
+        Parent = pivot,
+    }, token or "Text", nil, UDim.new(1, 0))
+    return pivot
+end
+
+Icons.Vectors = {
+    search = function(box, token)
+        local ring = Draw.New("Frame", {
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.42, 0.42),
+            Size = UDim2.fromScale(0.54, 0.54),
+            Parent = box,
+        })
+        Draw.Corner(ring, UDim.new(1, 0))
+        Draw.Stroke(ring, token or "SubText", 2)
+        DrawVectorLine(box, UDim2.fromScale(0.73, 0.73), UDim2.new(0.32, 0, 0, 2), 45, token or "SubText")
+    end,
+    close = function(box, token)
+        DrawVectorLine(box, UDim2.fromScale(0.5, 0.5), UDim2.new(0.68, 0, 0, 2), 45, token)
+        DrawVectorLine(box, UDim2.fromScale(0.5, 0.5), UDim2.new(0.68, 0, 0, 2), -45, token)
+    end,
+    check = function(box, token)
+        local w = box.Size.X.Offset
+        local thick = (w >= 16) and 3 or 2
+        DrawLCorner(box, UDim2.fromScale(0.5, 0.44), UDim2.fromScale(0.62, 0.36), -45, thick, token or "Good")
+    end,
+    plus = function(box, token)
+        DrawVectorLine(box, UDim2.fromScale(0.5, 0.5), UDim2.new(0.64, 0, 0, 2), 0, token)
+        DrawVectorLine(box, UDim2.fromScale(0.5, 0.5), UDim2.new(0, 2, 0.64, 0), 0, token)
+    end,
+    minus = function(box, token)
+        DrawVectorLine(box, UDim2.fromScale(0.5, 0.5), UDim2.new(0.64, 0, 0, 2), 0, token)
+    end,
+    chevron_down = function(box, token)
+        DrawLCorner(box, UDim2.fromScale(0.5, 0.42), UDim2.fromScale(0.42, 0.42), -45, 2, token)
+    end,
+    chevron_up = function(box, token)
+        DrawLCorner(box, UDim2.fromScale(0.5, 0.58), UDim2.fromScale(0.42, 0.42), 135, 2, token)
+    end,
+    chevron_right = function(box, token)
+        DrawLCorner(box, UDim2.fromScale(0.42, 0.5), UDim2.fromScale(0.42, 0.42), -135, 2, token)
+    end,
+    grip = function(box, token)
+        DrawVectorLine(box, UDim2.fromScale(0.62, 0.62), UDim2.new(0.66, 0, 0, 2), -45, token or "White")
+        DrawVectorLine(box, UDim2.fromScale(0.78, 0.78), UDim2.new(0.36, 0, 0, 2), -45, token or "White")
+    end,
+}
+
+function Icons.NormalizeKey(rawName)
+    if type(rawName) ~= "string" then
+        return ""
+    end
+    return rawName:lower():gsub("^lucide:", ""):gsub("^lucide%-", ""):gsub("^icon:", ""):gsub("[%-%s]+", "_")
+end
+
+function Icons.FromTitle(titleSpec, defaultSprite)
+    local text = Lang.SearchText(titleSpec)
+    if text ~= "" then
+        for _, rule in ipairs(Icons.Rules) do
+            if text:find(rule[1]) then
+                return rule[2]
+            end
+        end
+    end
+    return defaultSprite or "qblock"
+end
+
+function Icons.Vector(parent, vectorName, size, colorToken)
+    size = size or 16
+    local key = Icons.NormalizeKey(vectorName)
+    local builder = Icons.Vectors[key]
+    local holder = Draw.New("Frame", {
+        Name = "VectorIcon",
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(size, size),
+        Parent = parent,
+    })
+    if builder then
+        builder(holder, colorToken or "Text")
+    end
+    return holder
+end
+
+function Icons.Create(parent, iconSpec, size, colorToken, fallbackTitle)
+    size = size or Util.Metric("Icon")
+    if type(iconSpec) == "number" or (type(iconSpec) == "string" and (iconSpec:find("^rbxassetid://") or iconSpec:match("^%d+$"))) then
+        local assetId = type(iconSpec) == "number" and ("rbxassetid://" .. iconSpec) or (iconSpec:match("^%d+$") and ("rbxassetid://" .. iconSpec) or iconSpec)
+        local img = Draw.New("ImageLabel", {
+            Name = "Icon",
+            BackgroundTransparency = 1,
+            Image = assetId,
+            ScaleType = Enum.ScaleType.Fit,
+            Size = UDim2.fromOffset(size, size),
+            Parent = parent,
+        })
+        if colorToken then
+            Theme.Bind(img, { ImageColor3 = colorToken })
+        end
+        return img
+    end
+    local key = Icons.NormalizeKey(iconSpec)
+    if Icons.Vectors[key] then
+        return Icons.Vector(parent, key, size, colorToken)
+    end
+    local spriteName = (key ~= "" and Sprite.Resolve(key)) or Icons.FromTitle(fallbackTitle or iconSpec, "qblock")
+    local spriteSize = math.max(12, math.floor((size + 2) / 2) * 2)
+    return Sprite.New(parent, spriteName, spriteSize)
+end
+
+function Icons.Badge(parent, iconSpec, size, colorToken, fallbackTitle)
+    size = size or 24
+    local box = Draw.Box("Frame", {
+        Name = "IconBadge",
+        Size = UDim2.fromOffset(size, size),
+        BackgroundTransparency = 0.25,
+        Parent = parent,
+    }, "Element", "Outline", 6, 1.5)
+    local inner = Icons.Create(box, iconSpec, math.max(12, size - 6), colorToken, fallbackTitle)
+    inner.AnchorPoint = Vector2.new(0.5, 0.5)
+    inner.Position = UDim2.fromScale(0.5, 0.5)
+    return box, inner
+end
+
+Motion.Springs = {}
+Motion.ByInst = {}
+Motion.Free = {}
+Motion.Tickers = {}
+Motion.Sizes = { number = 1, Vector2 = 2, Color3 = 3, UDim2 = 4 }
+
+function Motion.Pack(kind, current, out)
+    if kind == "number" then
+        out[1] = current
+    elseif kind == "UDim2" then
+        out[1], out[2], out[3], out[4] = current.X.Scale, current.X.Offset, current.Y.Scale, current.Y.Offset
+    elseif kind == "Vector2" then
+        out[1], out[2] = current.X, current.Y
+    else
+        out[1], out[2], out[3] = current.R, current.G, current.B
+    end
+end
+
+function Motion.Unpack(kind, components)
+    if kind == "number" then
+        return components[1]
+    elseif kind == "UDim2" then
+        return UDim2.new(components[1], components[2], components[3], components[4])
+    elseif kind == "Vector2" then
+        return Vector2.new(components[1], components[2])
+    end
+    return Color3.new(
+        math.clamp(components[1], 0, 1),
+        math.clamp(components[2], 0, 1),
+        math.clamp(components[3], 0, 1)
+    )
+end
+
+function Motion.SpeedOf(speedKey)
+    if type(speedKey) == "number" then
+        return speedKey
+    end
+    local speeds = Config.Motion.Speed
+    return speeds[speedKey or "Normal"] or speeds.Normal
+end
+
+function Motion.Get(inst, prop)
+    local props = Motion.ByInst[inst]
+    return props and props[prop]
+end
+
+function Motion.Create(inst, prop, kind)
+    local spring = table.remove(Motion.Free) or { Pos = {}, Vel = {}, Goal = {} }
+    spring.Inst, spring.Prop, spring.Kind, spring.Count = inst, prop, kind, Motion.Sizes[kind]
+    Motion.Pack(kind, inst[prop], spring.Pos)
+    for index = 1, spring.Count do
+        spring.Vel[index] = 0
+    end
+    local props = Motion.ByInst[inst]
+    if not props then
+        props = {}
+        Motion.ByInst[inst] = props
+    end
+    props[prop] = spring
+    table.insert(Motion.Springs, spring)
+    spring.Index = #Motion.Springs
+    return spring
+end
+
+function Motion.Remove(spring, fireCallback)
+    local springs = Motion.Springs
+    local last = springs[#springs]
+    if last then
+        springs[spring.Index] = last
+        last.Index = spring.Index
+        springs[#springs] = nil
+    end
+    local props = Motion.ByInst[spring.Inst]
+    if props then
+        props[spring.Prop] = nil
+        if next(props) == nil then
+            Motion.ByInst[spring.Inst] = nil
+        end
+    end
+    local onDone, inst = spring.OnDone, spring.Inst
+    spring.Inst, spring.OnDone = nil, nil
+    table.insert(Motion.Free, spring)
+    if fireCallback and onDone then
+        Util.Try(onDone, inst)
+    end
+end
+
+function Motion.Wake()
+    if Motion.Connection or Library.Unloaded then
+        return
+    end
+    Motion.Connection = Util.Connect(RunService.RenderStepped, Motion.Step)
+end
+
+function Motion.Spring(inst, prop, target, speedKey, options)
+    local kind = typeof(target)
+    if not Motion.Sizes[kind] then
+        inst[prop] = target
+        return
+    end
+    local spring = Motion.Get(inst, prop) or Motion.Create(inst, prop, kind)
+    Motion.Pack(kind, target, spring.Goal)
+    spring.Speed = Motion.SpeedOf(speedKey)
+    spring.Damping = options and options.Damping or Config.Motion.Damping
+    spring.OnDone = options and options.OnDone
+    Motion.Wake()
+end
+
+function Motion.Impulse(inst, prop, velocity, speedKey, damping)
+    local kind = typeof(inst[prop])
+    if not Motion.Sizes[kind] then
+        return
+    end
+    local spring = Motion.Get(inst, prop)
+    if not spring then
+        spring = Motion.Create(inst, prop, kind)
+        Motion.Pack(kind, inst[prop], spring.Goal)
+        spring.OnDone = nil
+    end
+    for index = 1, spring.Count do
+        spring.Vel[index] += velocity[index] or 0
+    end
+    spring.Speed = Motion.SpeedOf(speedKey)
+    spring.Damping = damping or Config.Motion.BounceDamping
+    Motion.Wake()
+end
+
+function Motion.Set(inst, prop, target)
+    local spring = Motion.Get(inst, prop)
+    if spring then
+        Motion.Remove(spring, false)
+    end
+    inst[prop] = target
+end
+
+function Motion.Advance(spring, step, substeps)
+    local speed = spring.Speed
+    local damp = 2 * spring.Damping * speed
+    local stiffness = speed * speed
+    local settled = true
+    for _ = 1, substeps do
+        for index = 1, spring.Count do
+            local displacement = spring.Pos[index] - spring.Goal[index]
+            local accel = -stiffness * displacement - damp * spring.Vel[index]
+            spring.Vel[index] += accel * step
+            spring.Pos[index] += spring.Vel[index] * step
+        end
+    end
+    for index = 1, spring.Count do
+        if math.abs(spring.Pos[index] - spring.Goal[index]) > 0.002 or math.abs(spring.Vel[index]) > 0.01 then
+            settled = false
+            break
+        end
+    end
+    if settled then
+        for index = 1, spring.Count do
+            spring.Pos[index] = spring.Goal[index]
+            spring.Vel[index] = 0
+        end
+    end
+    return settled
+end
+
+function Motion.Step(deltaTime)
+    local clamped = math.min(deltaTime, 0.05)
+    local substeps = clamped > 0.018 and 2 or 1
+    local step = clamped / substeps
+    for index = #Motion.Springs, 1, -1 do
+        local spring = Motion.Springs[index]
+        if not spring.Inst or not spring.Inst.Parent then
+            Motion.Remove(spring, false)
+        else
+            local settled = Motion.Advance(spring, step, substeps)
+            pcall(function()
+                spring.Inst[spring.Prop] = Motion.Unpack(spring.Kind, spring.Pos)
+            end)
+            if settled then
+                Motion.Remove(spring, true)
+            end
+        end
+    end
+    Motion.StepTickers(clamped)
+    if #Motion.Springs == 0 and next(Motion.Tickers) == nil and Motion.Connection then
+        Motion.Connection:Disconnect()
+        Motion.Connection = nil
+    end
+end
+
+function Motion.StepTickers(deltaTime)
+    for owner, ticker in pairs(Motion.Tickers) do
+        ticker.Elapsed += deltaTime
+        local alpha = math.clamp(ticker.Elapsed / ticker.Duration, 0, 1)
+        local eased = 1 - (1 - alpha) ^ 3
+        local current = ticker.From + (ticker.To - ticker.From) * eased
+        pcall(ticker.OnTick, current, alpha >= 1)
+        if alpha >= 1 then
+            Motion.Tickers[owner] = nil
+        end
+    end
+end
+
+function Fx.ScaleOf(frame)
+    local scale = frame:FindFirstChild("FxScale")
+    if not scale then
+        scale = Draw.New("UIScale", { Name = "FxScale", Parent = frame })
+    end
+    return scale
+end
+
+function Fx.Squash(frame, impulseScale)
+    local scale = Fx.ScaleOf(frame)
+    Motion.Impulse(scale, "Scale", { impulseScale or 2.4 }, "Fast", Config.Motion.SquashDamping)
+end
+
+function Fx.Bump(frame, velocity)
+    Motion.Impulse(frame, "Position", { 0, 0, 0, -(velocity or 110) }, "Fast", Config.Motion.BounceDamping)
+end
+
+function Fx.Ripple(parent, screenPos, token)
+    if not parent or not parent.Parent then
+        return
+    end
+    local pointer = screenPos or UserInputService:GetMouseLocation()
+    local localPos = pointer - parent.AbsolutePosition
+    local maxDim = math.max(parent.AbsoluteSize.X, parent.AbsoluteSize.Y) * 2.1
+    local circle = Draw.Box("Frame", {
+        Name = "Ripple",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromOffset(localPos.X, localPos.Y),
+        Size = UDim2.fromOffset(4, 4),
+        BackgroundTransparency = 0.55,
+        ZIndex = 8,
+        Parent = parent,
+    }, token or "White", nil, UDim.new(1, 0))
+    local tween = Anim.Tween(circle, { Size = UDim2.fromOffset(maxDim, maxDim), BackgroundTransparency = 1 }, 0.36, "Out")
+    tween.Completed:Once(function()
+        circle:Destroy()
+    end)
+end
+
+function Fx.CountUp(owner, fromValue, toValue, duration, onTick)
+    if math.abs(toValue - fromValue) < 1e-4 then
+        pcall(onTick, toValue, true)
+        return
+    end
+    local existing = Motion.Tickers[owner]
+    local startValue = existing and (existing.From + (existing.To - existing.From) * math.clamp(existing.Elapsed / existing.Duration, 0, 1)) or fromValue
+    Motion.Tickers[owner] = {
+        From = startValue,
+        To = toValue,
+        Elapsed = 0,
+        Duration = duration or 0.22,
+        OnTick = onTick,
+    }
+    Motion.Wake()
+end
+
+function Fx.Shimmer(target, colorToken)
+    if target:FindFirstChild("FxShimmer") then
+        return
+    end
+    local gradient = Draw.New("UIGradient", {
+        Name = "FxShimmer",
+        Rotation = 25,
+        Offset = Vector2.new(-1, 0),
+        Parent = target,
+    })
+    Theme.OnRender(gradient, function()
+        local base = Theme.Colors[colorToken or "Text"] or Color3.new(1, 1, 1)
+        local highlight = Util.Lighten(base, 0.45)
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, base),
+            ColorSequenceKeypoint.new(0.45, base),
+            ColorSequenceKeypoint.new(0.5, highlight),
+            ColorSequenceKeypoint.new(0.55, base),
+            ColorSequenceKeypoint.new(1, base),
+        })
+    end)
+    Anim.Tween(gradient, { Offset = Vector2.new(1, 0) }, 2.6, "Sine", -1, false, 0.8)
+end
+
+function Fx.Spotlight(card)
+    return card
+end
+
+function Fx.StaggerRise(cards)
+    for index, card in ipairs(cards) do
+        if card and card.Parent then
+            local scale = Fx.ScaleOf(card)
+            scale.Scale = 0.96
+            task.delay((index - 1) * 0.028, function()
+                if card.Parent then
+                    Motion.Spring(scale, "Scale", 1, "Normal", { Damping = 0.62 })
+                end
+            end)
+        end
+    end
+end
+
+Tailwind.Cache = {}
+
+Tailwind.TokenMap = {
+    panel = "Panel", header = "PanelHeader", element = "Element", hover = "Hover",
+    accent = "Accent", ["accent-dark"] = "AccentDark", good = "Good", ["good-dark"] = "GoodDark",
+    danger = "Danger", ["danger-dark"] = "DangerDark", coin = "Coin", ["coin-dark"] = "CoinDark",
+    blue = "Blue", ["blue-dark"] = "BlueDark", risky = "Risky", track = "Track",
+    outline = "Outline", shadow = "Shadow", text = "Text", sub = "SubText",
+    muted = "Muted", white = "White", black = "Black", ink = "Ink",
+    topbar = "Topbar", sidebar = "Sidebar", ["sidebar-alt"] = "SidebarAlt",
+}
+
+Tailwind.RadiusMap = { none = 0, sm = 6, md = 8, lg = 10, xl = 12 }
+Tailwind.FontMap = { display = "Display", body = "Body", desc = "Desc", strong = "Strong", logo = "Logo", glyph = "Glyph" }
+Tailwind.SizeMap = { xs = 12, sm = 13, base = 15, lg = 18, xl = 22, ["2xl"] = 26 }
+Tailwind.AlignXMap = { left = Enum.TextXAlignment.Left, center = Enum.TextXAlignment.Center, right = Enum.TextXAlignment.Right }
+Tailwind.FlexXMap = { start = Enum.HorizontalAlignment.Left, center = Enum.HorizontalAlignment.Center, ["end"] = Enum.HorizontalAlignment.Right }
+Tailwind.FlexYMap = { start = Enum.VerticalAlignment.Top, center = Enum.VerticalAlignment.Center, ["end"] = Enum.VerticalAlignment.Bottom }
+
+function Tailwind.ParseToken(raw)
+    return Tailwind.TokenMap[raw] or raw
+end
+
+function Tailwind.ApplyLayoutRule(inst, rule, state)
+    if rule == "flex-row" or rule == "flex-col" then
+        state.Flex = rule == "flex-row" and "row" or "col"
+    elseif rule:sub(1, 6) == "items-" then
+        state.Items = rule:sub(7)
+    elseif rule:sub(1, 8) == "justify-" then
+        state.Justify = rule:sub(9)
+    elseif rule:sub(1, 4) == "gap-" then
+        state.Gap = (tonumber(rule:sub(5)) or 2) * 4
+    elseif rule == "w-full" then
+        inst.Size = UDim2.new(1, 0, inst.Size.Y.Scale, inst.Size.Y.Offset)
+    elseif rule == "h-full" then
+        inst.Size = UDim2.new(inst.Size.X.Scale, inst.Size.X.Offset, 1, 0)
+    elseif rule == "w-1/2" then
+        inst.Size = UDim2.new(0.5, 0, inst.Size.Y.Scale, inst.Size.Y.Offset)
+    elseif rule == "clip" then
+        inst.ClipsDescendants = true
+    elseif rule == "auto-x" then
+        inst.AutomaticSize = Enum.AutomaticSize.X
+    elseif rule == "auto-y" then
+        inst.AutomaticSize = Enum.AutomaticSize.Y
+    end
+end
+
+function Tailwind.ApplyBoxRule(inst, rule, state)
+    local padAll = rule:match("^p%-(%d+)$")
+    local padX = rule:match("^px%-(%d+)$")
+    local padY = rule:match("^py%-(%d+)$")
+    local widthPx = rule:match("^w%-%[(%d+)%]$") or rule:match("^w%-(%d+)$")
+    local heightPx = rule:match("^h%-%[(%d+)%]$") or rule:match("^h%-(%d+)$")
+    if padAll then
+        local px = tonumber(padAll) * 4
+        state.Pad = { px, px, px, px }
+    elseif padX then
+        local px = tonumber(padX) * 4
+        state.Pad = state.Pad or { 0, 0, 0, 0 }
+        state.Pad[2], state.Pad[4] = px, px
+    elseif padY then
+        local px = tonumber(padY) * 4
+        state.Pad = state.Pad or { 0, 0, 0, 0 }
+        state.Pad[1], state.Pad[3] = px, px
+    elseif widthPx then
+        inst.Size = UDim2.new(0, tonumber(widthPx), inst.Size.Y.Scale, inst.Size.Y.Offset)
+    elseif heightPx then
+        inst.Size = UDim2.new(inst.Size.X.Scale, inst.Size.X.Offset, 0, tonumber(heightPx))
+    end
+end
+
+function Tailwind.ApplySurfaceRule(inst, rule, state)
+    if rule == "rounded-full" then
+        Draw.Corner(inst, UDim.new(1, 0))
+    elseif rule:sub(1, 8) == "rounded-" then
+        local key = rule:sub(9)
+        Draw.Corner(inst, Tailwind.RadiusMap[key] or tonumber(key) or 8)
+    elseif rule:sub(1, 11) == "bg-opacity-" then
+        inst.BackgroundTransparency = 1 - math.clamp((tonumber(rule:sub(12)) or 100) / 100, 0, 1)
+    elseif rule:sub(1, 3) == "bg-" then
+        inst.BackgroundTransparency = inst.BackgroundTransparency == 1 and 0 or inst.BackgroundTransparency
+        Theme.Bind(inst, { BackgroundColor3 = Tailwind.ParseToken(rule:sub(4)) })
+    elseif rule == "border" or rule == "border-2" or rule == "border-3" then
+        state.BorderWidth = tonumber(rule:match("%d+")) or 1
+    elseif rule:sub(1, 7) == "border-" then
+        state.BorderToken = Tailwind.ParseToken(rule:sub(8))
+    elseif rule == "spotlight" then
+        state.Spotlight = true
+    end
+end
+
+function Tailwind.ApplyTextRule(inst, rule, state)
+    if not inst:IsA("TextLabel") and not inst:IsA("TextButton") and not inst:IsA("TextBox") then
+        return
+    end
+    if rule:sub(1, 5) == "font-" then
+        state.Font = Tailwind.FontMap[rule:sub(6)] or "Body"
+    elseif rule:sub(1, 5) == "text-" then
+        local suffix = rule:sub(6)
+        if Tailwind.SizeMap[suffix] then
+            state.TextSize = Tailwind.SizeMap[suffix]
+        elseif Tailwind.AlignXMap[suffix] then
+            inst.TextXAlignment = Tailwind.AlignXMap[suffix]
+        else
+            Theme.Bind(inst, { TextColor3 = Tailwind.ParseToken(suffix) })
+        end
+    elseif rule == "truncate" then
+        inst.TextTruncate = Enum.TextTruncate.AtEnd
+    elseif rule == "wrap" then
+        inst.TextWrapped = true
+    elseif rule == "shimmer" then
+        Fx.Shimmer(inst)
+    end
+end
+
+function Tailwind.FinalizeState(inst, state)
+    if state.Pad then
+        Draw.Padding(inst, state.Pad[1], state.Pad[2], state.Pad[3], state.Pad[4])
+    end
+    if state.Flex then
+        local alignX = state.Flex == "row" and Tailwind.FlexXMap[state.Justify or "start"] or Tailwind.FlexXMap[state.Items or "start"]
+        local alignY = state.Flex == "row" and Tailwind.FlexYMap[state.Items or "center"] or Tailwind.FlexYMap[state.Justify or "start"]
+        local list = Draw.List(inst, state.Gap or 0, state.Flex == "row", alignX, alignY)
+        if state.Justify == "between" then
+            list.HorizontalFlex = state.Flex == "row" and Enum.UIFlexAlignment.SpaceBetween or Enum.UIFlexAlignment.None
+        end
+    end
+    if state.BorderWidth or state.BorderToken then
+        Draw.Stroke(inst, state.BorderToken or "Outline", state.BorderWidth or 2, true)
+    end
+    if state.Font or state.TextSize then
+        Fonts.Style(inst, state.Font or "Body", state.TextSize or Util.TextSize("Label"))
+    end
+    if state.Spotlight then
+        Fx.Spotlight(inst)
+    end
+end
+
+function Tailwind.Apply(inst, classString)
+    if type(classString) ~= "string" or classString == "" then
+        return inst
+    end
+    local state = {}
+    for rule in classString:gmatch("%S+") do
+        Tailwind.ApplyLayoutRule(inst, rule, state)
+        Tailwind.ApplyBoxRule(inst, rule, state)
+        Tailwind.ApplySurfaceRule(inst, rule, state)
+        Tailwind.ApplyTextRule(inst, rule, state)
+    end
+    Tailwind.FinalizeState(inst, state)
+    return inst
+end
+
+function Tailwind.BindProp(inst, property, target)
+    if property == "Class" or property == "class" then
+        if Reactive.IsRef(target) or type(target) == "function" then
+            Reactive.Effect(function()
+                Tailwind.Apply(inst, Reactive.IsRef(target) and target.Value or target())
+            end)
+        else
+            Tailwind.Apply(inst, target)
+        end
+        return
+    end
+    if property == "Text" and (type(target) == "table" and not Reactive.IsRef(target)) then
+        Lang.Bind(inst, target)
+        return
+    end
+    if Reactive.IsRef(target) or type(target) == "function" then
+        Reactive.Effect(function()
+            local resolved = Reactive.IsRef(target) and target.Value or target()
+            if property == "Text" then
+                Lang.Bind(inst, resolved)
+            else
+                inst[property] = resolved
+            end
+        end)
+        return
+    end
+    if property == "Text" then
+        Lang.Bind(inst, target)
+    elseif property ~= "Parent" and property ~= "Children" then
+        inst[property] = target
+    end
+end
+
+function Tailwind.CreateElement(tag, props, children)
+    props = props or {}
+    local classMap = { Card = "Frame", Box = "Frame", Row = "Frame", Col = "Frame", Text = "TextLabel", Button = "TextButton", Input = "TextBox" }
+    local robloxClass = classMap[tag] or tag
+    local inst = Draw.New(robloxClass, { BackgroundTransparency = robloxClass == "Frame" and 1 or 1 })
+    if tag == "Card" then
+        Tailwind.Apply(inst, "bg-panel rounded-xl border-2 border-outline p-3 flex-col gap-2 spotlight")
+    elseif tag == "Text" then
+        Fonts.Style(inst, "Body", Util.TextSize("Label"))
+        Theme.Bind(inst, { TextColor3 = "Text" })
+    end
+    for property, value in pairs(props) do
+        if type(property) == "string" and property:sub(1, 2) == "On" and type(value) == "function" then
+            local signalName = property:sub(3)
+            if signalName == "Click" and inst:IsA("GuiButton") then
+                inst.Activated:Connect(value)
+            elseif inst[signalName] then
+                inst[signalName]:Connect(value)
+            end
+        else
+            Tailwind.BindProp(inst, property, value)
+        end
+    end
+    for index, child in ipairs(children or props.Children or {}) do
+        if typeof(child) == "Instance" then
+            child.LayoutOrder = index
+            child.Parent = inst
+        end
+    end
+    if props.Parent then
+        inst.Parent = props.Parent
+    end
+    return inst
+end
+
+function Tailwind.Component(renderFn)
+    return function(props, children)
+        return renderFn(props or {}, children)
+    end
+end
+
+function Tailwind.Show(whenSource, renderTrue, renderFalse)
+    local holder = Draw.New("Frame", { Name = "ShowSlot", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY })
+    Reactive.Effect(function()
+        for _, child in ipairs(holder:GetChildren()) do
+            child:Destroy()
+        end
+        local active = Reactive.IsRef(whenSource) and whenSource.Value or (type(whenSource) == "function" and whenSource() or whenSource)
+        local builder = active and renderTrue or renderFalse
+        if builder then
+            local built = builder()
+            if typeof(built) == "Instance" then
+                built.Parent = holder
+            end
+        end
+    end)
+    return holder
+end
+
+function Tailwind.For(listSource, renderEntry)
+    local holder = Draw.New("Frame", { Name = "ForSlot", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.fromScale(1, 0) })
+    Draw.List(holder, 6, false)
+    Reactive.Effect(function()
+        for _, child in ipairs(holder:GetChildren()) do
+            if not child:IsA("UIListLayout") then
+                child:Destroy()
+            end
+        end
+        local entries = Reactive.IsRef(listSource) and listSource.Value or (type(listSource) == "function" and listSource() or listSource or {})
+        for index, entry in ipairs(entries) do
+            local node = renderEntry(entry, index)
+            if typeof(node) == "Instance" then
+                node.LayoutOrder = index
+                node.Parent = holder
+            end
+        end
+    end)
+    return holder
+end
+
+
+-- ImGui-style cursor container: vertical flow by default, SameLine places items horizontally.
+-- Width spec: nil = fill remaining, 0<w<=1 = ratio, w>1 = px, w<0 = remaining minus |w| px.
 function Container.New(host, options)
     options = options or {}
     local self = setmetatable({
@@ -1386,6 +2658,7 @@ end
 
 function Container:MarkDirty()
     Layout.Dirty[self] = true
+    Layout.Schedule()
 end
 
 function Container:SetWidth(width)
@@ -1446,6 +2719,7 @@ function Container:Remove(item)
     if item.Child then
         item.Child:Destroy()
     end
+    Theme.UnbindTree(item.Frame)
     item.Frame:Destroy()
     self:MarkDirty()
 end
@@ -1502,7 +2776,7 @@ local function ResolveWidth(spec, available, used, gap)
     return math.min(spec, remaining)
 end
 
--- ImGui: item ที่อยู่ในแถว SameLine และไม่ได้กำหนดความกว้าง จะพอดีเนื้อหาแทนการยืดเต็ม
+-- Auto-fit items inside a SameLine group when explicit width is omitted
 local function ItemWidth(item, joined, available, used, gap)
     if item.Width == nil and item.AutoWidth and not item.Fill and (joined or item.SameLine) then
         return math.min(item.AutoWidth(), math.max(0, available - used))
@@ -1510,25 +2784,35 @@ local function ItemWidth(item, joined, available, used, gap)
     return ResolveWidth(item.Width, available, used, gap)
 end
 
-function Container:Place(item, cursor, available, joined)
-    if item.SameLine and cursor.EndX then
-        cursor.X = cursor.EndX + (item.Gap or self.GapX)
+function Container:Place(entry, cursor, available, joined)
+    if entry.SameLine and cursor.EndX then
+        cursor.X = cursor.EndX + (entry.Gap or self.GapX)
     else
         if cursor.EndX then
             cursor.Y += cursor.LineHeight + self.GapY
         end
-        cursor.X = self.PadX + item.Indent
+        cursor.LineIndent = entry.Indent or 0
+        cursor.X = self.PadX + cursor.LineIndent
         cursor.LineHeight = 0
     end
-    local width = ItemWidth(item, joined, available, cursor.X - self.PadX, self.GapX)
-    local height = type(item.Height) == "function" and item.Height(width) or item.Height
-    item.Frame.Position = UDim2.fromOffset(cursor.X, cursor.Y)
-    item.Frame.Size = UDim2.fromOffset(width, height)
-    if item.Child then
-        item.Child:SetWidth(width - (item.ChildInset or 0))
+    local lineIndent = cursor.LineIndent or 0
+    local lineAvailable = math.max(0, available - lineIndent)
+    local used = math.max(0, cursor.X - self.PadX - lineIndent)
+    local width = ItemWidth(entry, joined, lineAvailable, used, self.GapX)
+    local height = type(entry.Height) == "function" and entry.Height(width) or entry.Height
+    if entry.LastX ~= cursor.X or entry.LastY ~= cursor.Y then
+        entry.LastX, entry.LastY = cursor.X, cursor.Y
+        entry.Frame.Position = UDim2.fromOffset(cursor.X, cursor.Y)
     end
-    if item.OnLayout then
-        item.OnLayout(width, height)
+    if entry.LastW ~= width or entry.LastH ~= height then
+        entry.LastW, entry.LastH = width, height
+        entry.Frame.Size = UDim2.fromOffset(width, height)
+    end
+    if entry.Child then
+        entry.Child:SetWidth(width - (entry.ChildInset or 0))
+    end
+    if entry.OnLayout then
+        entry.OnLayout(width, height)
     end
     cursor.EndX = cursor.X + width
     cursor.LineHeight = math.max(cursor.LineHeight, height)
@@ -1544,7 +2828,10 @@ function Container:Layout()
     local visible = {}
     for _, item in ipairs(self.Items) do
         local shown = not item.Hidden and not item.Filtered
-        item.Frame.Visible = shown
+        if item.LastShown ~= shown then
+            item.LastShown = shown
+            item.Frame.Visible = shown
+        end
         if shown then
             table.insert(visible, item)
         end
@@ -1558,7 +2845,8 @@ function Container:Layout()
 end
 
 function Container:Commit(height)
-    if self.Scroll then
+    if self.Scroll and self.LastCanvasHeight ~= height then
+        self.LastCanvasHeight = height
         self.Host.CanvasSize = UDim2.fromOffset(0, height)
     end
     if height == self.ContentHeight then
@@ -1573,7 +2861,16 @@ function Container:Commit(height)
     end
 end
 
+function Layout.Schedule()
+    if Layout.Scheduled or Library.Unloaded then
+        return
+    end
+    Layout.Scheduled = true
+    RunService.RenderStepped:Once(Layout.Flush)
+end
+
 function Layout.Flush()
+    Layout.Scheduled = false
     for _ = 1, Config.LayoutPasses do
         if next(Layout.Dirty) == nil then
             return
@@ -1591,6 +2888,9 @@ function Layout.Flush()
             end
         end
     end
+    if next(Layout.Dirty) ~= nil then
+        Layout.Schedule()
+    end
 end
 
 function Layout.MarkAll()
@@ -1599,7 +2899,7 @@ function Layout.MarkAll()
     end
 end
 
---@return Vector2 ขนาดข้อความเมื่อตัดบรรทัดที่ความกว้าง width
+--@return Vector2 Wrapped text bounds at given width
 function Layout.Measure(text, size, fontKind, width)
     width = math.max(1, math.floor(width))
     local key = table.concat({ text, size, fontKind, width, State.Language }, "\0")
@@ -1622,7 +2922,7 @@ function Layout.Measure(text, size, fontKind, width)
     return bounds
 end
 
--- วัดด้วย TextLabel ซ่อนนอกจอ เพราะ GetTextSize รับแค่ Enum.Font ใช้กับฟอนต์ไทยที่โหลดเองไม่ได้
+-- Off-screen TextLabel probe (TextService:GetTextSize does not support custom FontFace)
 function Layout.Probe()
     local probe = Layout.ProbeLabel
     if probe and probe.Parent then
@@ -1652,6 +2952,486 @@ function Layout.ScrollFrame(props)
     return frame
 end
 
+function Container:Columns(count, gap)
+    count = math.max(1, math.floor(tonumber(count) or 2))
+    gap = gap or self.GapX
+    local cols = {}
+    local colWidth = 1 / count
+    for index = 1, count do
+        if index > 1 then
+            self:SameLine(gap)
+        end
+        local subFrame = Draw.New("Frame", {
+            BackgroundTransparency = 1,
+            Parent = self.Host,
+        })
+        local subContainer = Container.New(subFrame, {
+            Parent = self,
+            PadX = 0,
+            PadY = 0,
+            GapX = self.GapX,
+            GapY = self.GapY,
+        })
+        local entry = self:Add(subFrame, {
+            Width = colWidth,
+            Height = 0,
+            Child = subContainer,
+        })
+        subContainer.OnHeight = function(nextHeight)
+            entry.Height = nextHeight
+            self:MarkDirty()
+        end
+        cols[index] = subContainer
+    end
+    return table.unpack(cols)
+end
+
+function Container:Mount(element, spec)
+    spec = spec or {}
+    local frame = (type(element) == "table" and element.Frame) or element
+    if not frame then
+        return nil
+    end
+    frame.Parent = self.Host
+    return self:Add(frame, {
+        Width = spec.Width,
+        Height = spec.Height or frame.Size.Y.Offset or Util.Metric("Row"),
+        After = spec.After,
+        Search = spec.Search,
+        Fill = spec.Fill,
+    })
+end
+
+function Container:EndChild()
+    Gui.EndChild()
+    return self.Parent or self
+end
+
+function Container:AddBadge(text, spec)
+    spec = spec or {}
+    spec.Text = text or spec.Text
+    spec.Container = self
+    return Gui.Badge(self, spec)
+end
+
+function Container:AddKbd(keys, spec)
+    spec = spec or {}
+    spec.Keys = keys or spec.Keys
+    spec.Container = self
+    return Gui.Kbd(self, spec)
+end
+
+function Container:AddMarquee(text, spec)
+    spec = spec or {}
+    spec.Text = text or spec.Text
+    spec.Container = self
+    return Gui.Marquee(self, spec)
+end
+
+function Container:tw(target, classes)
+    return Tailwind.Apply(target, classes)
+end
+
+function Container:h(tag, props, children)
+    local inst = Tailwind.CreateElement(tag, props, children)
+    if inst then
+        self:Mount(inst, props)
+    end
+    return inst
+end
+
+Gui.Press = { Active = false, Token = 0 }
+
+function Gui.Lookup(container, id)
+    local registry = container and container.Ids
+    return id ~= nil and registry and registry[id] or nil
+end
+
+function Gui.Remember(container, id, handle)
+    if not container or id == nil then
+        return
+    end
+    container.Ids = container.Ids or {}
+    container.Ids[id] = handle
+end
+
+function Gui.Current()
+    return Gui.Stack[#Gui.Stack]
+end
+
+function Gui.BeginChild(parent, id, options)
+    if type(id) == "table" and options == nil then
+        options, id = id, id.Id
+    end
+    local existing = Gui.Lookup(parent, id)
+    if existing then
+        table.insert(Gui.Stack, existing)
+        return existing
+    end
+    options = options or {}
+    local holder = Draw.New("Frame", { Name = tostring(id or "Child"), BackgroundTransparency = 1 })
+    local hasBorder = options.Border ~= false and options.Fill ~= false
+    local fillToken = options.Fill or (hasBorder and "Element" or nil)
+    local strokeToken = options.Stroke or (hasBorder and "Track" or nil)
+    local radius = options.Radius or 10
+    local surface = Draw.Box("Frame", { Size = UDim2.fromScale(1, 1), ClipsDescendants = options.Clip == true, Parent = holder }, fillToken, strokeToken, radius, options.Thickness or 2)
+    if hasBorder and not options.Fill then
+        surface.BackgroundTransparency = 0.4
+    end
+    local useScroll = options.Scroll == true or options.Height ~= nil and options.Scroll ~= false
+    local host = useScroll and Layout.ScrollFrame({ Size = UDim2.fromScale(1, 1), Parent = surface }) or Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = surface })
+    local child = Container.New(host, {
+        PadX = options.PadX or 8,
+        PadY = options.PadY or 8,
+        GapX = options.GapX,
+        GapY = options.GapY,
+        Parent = parent,
+    })
+    child.Frame, child.Surface = holder, surface
+    local inset = useScroll and Config.Page.ScrollBar or 0
+    if parent and parent.Add then
+        child.Item = parent:Add(holder, {
+            Width = options.Width,
+            Height = options.Height or function()
+                return child.ContentHeight
+            end,
+            Child = child,
+            ChildInset = inset,
+        })
+    end
+    Gui.Remember(parent, id, child)
+    table.insert(Gui.Stack, child)
+    return child
+end
+
+function Gui.EndChild()
+    Gui.Stack[#Gui.Stack] = nil
+    return Gui.Current()
+end
+
+function Gui.Badge(parent, spec, token, shiny)
+    local textSpec = spec
+    local container = type(parent) == "table" and parent.Add and parent or nil
+    local host = (type(parent) == "userdata" and parent) or (container and container.Host) or nil
+    if type(spec) == "table" and (spec.Text ~= nil or spec.Color ~= nil) then
+        textSpec = spec.Text or ""
+        token = spec.Color or token
+        shiny = spec.Shiny
+        container = spec.Container or container
+    end
+    token = token or "Danger"
+    local shade = token .. "Dark"
+    local pill = Draw.Box("Frame", {
+        Name = "Badge",
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromOffset(0, 18),
+        Parent = host,
+    }, token, Themes.Shared[shade] and shade or "Outline", 5, 1.5)
+    Draw.Padding(pill, 0, 6, 0, 6)
+    local label = Draw.Text({
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromScale(0, 1),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = pill,
+    }, "Strong", 11, token == "Coin" and "Ink" or "OnAccent", textSpec)
+    if shiny ~= false then
+        Fx.Shimmer(label, token == "Coin" and "Ink" or "White")
+    end
+    local width = Layout.Measure(label.Text, 11, "Strong", 400).X + 14
+    local badgeObj = {
+        Frame = pill,
+        Label = label,
+        Width = width,
+        SetText = function(_, nextText)
+            Lang.Bind(label, nextText)
+        end,
+        SetColor = function(_, nextToken)
+            Theme.Bind(pill, { BackgroundColor3 = nextToken })
+        end,
+    }
+    if container then
+        badgeObj.Item = container:Add(pill, { Width = width, Height = 20 })
+    end
+    return badgeObj, label
+end
+
+function Gui.Kbd(parent, keySpec)
+    local container = type(parent) == "table" and parent.Add and parent or nil
+    local host = (type(parent) == "userdata" and parent) or (container and container.Host) or nil
+    local keyText = type(keySpec) == "table" and (keySpec.Keys or keySpec.Text or keySpec[1]) or keySpec
+    local holder, face = Draw.Block(host, "Element", "Track", 5, 2)
+    holder.AutomaticSize = Enum.AutomaticSize.X
+    holder.Size = UDim2.fromOffset(0, 20)
+    face.AutomaticSize = Enum.AutomaticSize.X
+    Draw.Padding(face, 0, 6, 0, 6)
+    local shortText = Keybinds.Short and Keybinds.Short(tostring(keyText or "")) or tostring(keyText or "")
+    local label = Draw.Text({
+        Text = shortText,
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromScale(0, 1),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = face,
+    }, "Strong", 11, "SubText")
+    local width = Layout.Measure(shortText, 11, "Strong", 400).X + 16
+    if container then
+        container:Add(holder, { Width = width, Height = 22 })
+    end
+    return holder, label
+end
+
+function Gui.Marquee(container, spec, speed)
+    local textSpec = type(spec) == "table" and spec.Text or spec
+    speed = (type(spec) == "table" and spec.Speed) or speed or 55
+    local height = Util.Metric("Row") - 4
+    local clip = Draw.Box("Frame", { Name = "Marquee", ClipsDescendants = true }, "Element", "Outline", 8, 2)
+    local track = Draw.Text({
+        Position = UDim2.fromOffset(10, 0),
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromScale(0, 1),
+        Parent = clip,
+    }, "Body", Util.TextSize("Label"), "Text", textSpec)
+    local entry = container:Add(clip, {
+        Height = height,
+        Search = Lang.SearchText(textSpec),
+        OnLayout = function(width)
+            local textW = Layout.Measure(track.Text, track.TextSize, "Body", 4000).X
+            if textW > width - 20 then
+                track.Position = UDim2.fromOffset(width, 0)
+                local duration = math.max(4, (width + textW) / speed)
+                Anim.Tween(track, { Position = UDim2.fromOffset(-textW, 0) }, duration, "Linear", -1, false)
+            else
+                track.Position = UDim2.fromOffset(10, 0)
+            end
+        end,
+    })
+    return {
+        Frame = clip,
+        Label = track,
+        Item = entry,
+        SetText = function(_, nextSpec)
+            Lang.Bind(track, nextSpec)
+            container:MarkDirty()
+        end,
+    }
+end
+
+Gui.ButtonStyles = {
+    Default = { Face = "Element", Shade = "Track", Text = "Text" },
+    Primary = { Face = "Blue", Shade = "BlueDark", Text = "White" },
+    Success = { Face = "Good", Shade = "GoodDark", Text = "White" },
+    Danger = { Face = "Danger", Shade = "DangerDark", Text = "White" },
+    Warning = { Face = "Coin", Shade = "CoinDark", Text = "Ink" },
+    Ghost = { Face = nil, Shade = nil, Text = "Text" },
+}
+
+function Gui.BuildButtonFace(options)
+    local styleName = options.Style or "Default"
+    local style = Gui.ButtonStyles[styleName] or Gui.ButtonStyles.Default
+    local radius = options.Radius or Config.Metrics.Desktop.Radius
+    if not style.Face then
+        local holder = Draw.New("Frame", { Name = "GhostButton", BackgroundTransparency = 1 })
+        local face = Draw.Box("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ClipsDescendants = true, Parent = holder }, "Hover", nil, radius)
+        return holder, face, nil, 0, style
+    end
+    local depth = options.Depth or Config.Button.Depth
+    local holder, face, shade = Draw.Block(nil, style.Face, style.Shade, radius, depth)
+    face.ClipsDescendants = true
+    return holder, face, shade, depth, style
+end
+
+function Gui.BuildButtonContent(face, options, style)
+    local content = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 3, Parent = face })
+    Draw.List(content, Config.Button.IconGap, true, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+    Draw.Padding(content, 0, 8, 0, 8)
+    if options.Icon then
+        local icon = Icons.Create(content, options.Icon, Util.Metric("Icon"), style.Text, options.Text)
+        icon.LayoutOrder = 1
+    end
+    local label = Draw.Text({
+        LayoutOrder = 2,
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromScale(0, 1),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        Parent = content,
+    }, "Body", Util.TextSize("Button"), style.Text, options.Text or "")
+    return label
+end
+
+function Gui.BindButtonInput(handle)
+    local face, hit, style = handle.Face, handle.Hit, handle.Style
+    hit.MouseEnter:Connect(function()
+        if State.Touch or handle.Disabled then
+            return
+        end
+        if not style.Face then
+            Motion.Spring(face, "BackgroundTransparency", 0.35, "Fast")
+        else
+            local base = Theme.Colors[style.Face] or Color3.new(1, 1, 1)
+            Motion.Spring(face, "BackgroundColor3", Util.Lighten(base, Config.Button.HoverLighten), "Fast")
+        end
+    end)
+    hit.MouseLeave:Connect(function()
+        if not style.Face then
+            Motion.Spring(face, "BackgroundTransparency", 1, "Fast")
+        else
+            Motion.Spring(face, "BackgroundColor3", Theme.Colors[style.Face] or Color3.new(1, 1, 1), "Fast")
+        end
+        Motion.Spring(face, "Position", UDim2.new(), "Fast")
+    end)
+    hit.MouseButton1Down:Connect(function()
+        if not handle.Disabled and handle.Depth > 0 then
+            Motion.Spring(face, "Position", UDim2.fromOffset(0, handle.Depth - 1), "Fast")
+        end
+    end)
+    hit.MouseButton1Up:Connect(function()
+        if handle.Depth > 0 then
+            Motion.Spring(face, "Position", UDim2.new(), "Normal", { Damping = 0.52 })
+        end
+    end)
+    hit.Activated:Connect(function(inputObject)
+        if handle.Disabled then
+            return
+        end
+        local pos = inputObject and inputObject.Position or UserInputService:GetMouseLocation()
+        Fx.Ripple(face, Vector2.new(pos.X, pos.Y), style.Text)
+        Fx.Squash(handle.Holder, 1.4)
+        if handle.OnActivate then
+            handle:OnActivate()
+        end
+    end)
+end
+
+function Gui.Button(container, options)
+    options = options or {}
+    local holder, face, shade, depth, style = Gui.BuildButtonFace(options)
+    local label = Gui.BuildButtonContent(face, options, style)
+    local hit = Draw.New("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5, Parent = holder })
+    local handle = {
+        Container = container,
+        Holder = holder,
+        Face = face,
+        Shade = shade,
+        Depth = depth,
+        Style = style,
+        Label = label,
+        Hit = hit,
+        Disabled = options.Disabled == true,
+        OnActivate = options.OnActivate,
+    }
+    Gui.BindButtonInput(handle)
+    local iconExtra = options.Icon and (Util.Metric("Icon") + Config.Button.IconGap) or 0
+    if container and container.Add then
+        handle.Item = container:Add(holder, {
+            Width = options.Width,
+            Height = (options.Height or Util.Metric("Box")) + depth,
+            After = options.After,
+            Search = Lang.SearchText(options.Text),
+            AutoWidth = function()
+                return Layout.Measure(label.Text, label.TextSize, "Body", 1000).X + iconExtra + 32
+            end,
+        })
+    end
+    if options.Tooltip then
+        Tooltip.Attach(holder, options.Tooltip)
+    end
+    return handle
+end
+local function BuildSelectableVisuals(row, spec, height)
+    local token = spec.Color or "Accent"
+    local bar = Draw.Box("Frame", {
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, 3, 0.5, 0),
+        Size = UDim2.fromOffset(Config.Selectable.BarWidth, 0),
+        Parent = row,
+    }, token, nil, 2)
+    local thumbSize = height - 8
+    local thumb
+    if spec.Image or spec.Icon then
+        thumb = Draw.Thumb(row, spec.Image or spec.Icon, spec.Tint, thumbSize, UDim2.new(0, 10, 0.5, 0))
+    end
+    return bar, thumb, thumbSize
+end
+
+function Gui.Selectable(parent, spec)
+    spec = spec or {}
+    local container = spec.Container or (type(parent) == "table" and parent.Add and parent or nil)
+    local host = (type(parent) == "userdata" and parent) or (container and container.Host) or nil
+    local height = spec.Height or Util.Metric("Item")
+    local row = Draw.Box("TextButton", {
+        Name = "Selectable",
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+        Size = UDim2.new(spec.Width or 1, 0, 0, height),
+        Parent = host,
+    }, "Hover", nil, Config.Selectable.Radius)
+    local bar, thumb, thumbSize = BuildSelectableVisuals(row, spec, height)
+    local hasMedia = thumb ~= nil
+    local textOffset = hasMedia and (thumbSize + 18) or 12
+    local label = Draw.Text({
+        Position = UDim2.fromOffset(textOffset, 0),
+        Size = UDim2.new(1, -(textOffset + (spec.RightPadding or 26)), 1, 0),
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        Parent = row,
+    }, "Body", Util.TextSize("Label"), "Text", spec.Text or spec.Label or "Item")
+    local mark = Icons.Vector(row, "check", 15, "OnAccent")
+    mark.AnchorPoint = Vector2.new(1, 0.5)
+    mark.Position = UDim2.new(1, -8, 0.5, 0)
+    local markScale = Draw.New("UIScale", { Scale = spec.Selected and 1 or 0, Parent = mark })
+    local handle = { Frame = row, Button = row, Label = label, Thumb = thumb, Bar = bar, Mark = mark, MarkScale = markScale, Selected = spec.Selected == true, Hovered = false }
+    function handle.Render(instant)
+        local isSel = handle.Selected
+        local duration = instant and 0 or Config.Tween.Fast
+        local fill = isSel and Theme.Colors.Accent or Theme.Colors.Hover
+        local alpha = isSel and 0 or (handle.Hovered and 0.45 or 1)
+        Anim.Tween(row, { BackgroundColor3 = fill, BackgroundTransparency = alpha }, duration)
+        Anim.Tween(label, { TextColor3 = Theme.Colors[isSel and "OnAccent" or "Text"] }, duration)
+        if instant then
+            Motion.Set(markScale, "Scale", isSel and 1 or 0)
+        else
+            Motion.Spring(markScale, "Scale", isSel and 1 or 0, "Fast", { Damping = 0.6 })
+        end
+        Motion.Spring(bar, "Size", UDim2.fromOffset(Config.Selectable.BarWidth, isSel and (height - 8) or 0), "Fast")
+    end
+    function handle.SetSelected(active, instant)
+        handle.Selected = active == true
+        handle.Render(instant)
+    end
+    if not State.Touch then
+        row.MouseEnter:Connect(function()
+            handle.Hovered = true
+            handle.Render()
+        end)
+        row.MouseLeave:Connect(function()
+            handle.Hovered = false
+            handle.Render()
+        end)
+    end
+    row.Activated:Connect(function()
+        Fx.Ripple(row, nil, spec.Color or "White")
+        if spec.Toggle ~= false then
+            handle.SetSelected(not handle.Selected)
+        end
+        if type(spec.Callback) == "function" then
+            Util.Try(spec.Callback, handle.Selected, handle)
+        end
+    end)
+    Theme.OnRender(row, function()
+        handle.Render(true)
+    end)
+    handle.Render(true)
+    if container and container.Add then
+        handle.Item = container:Add(row, {
+            Width = spec.Width,
+            Height = height,
+            After = spec.After,
+            Search = Lang.SearchText(spec.Text or spec.Label),
+        })
+    end
+    return handle
+end
+
+
 
 function Widget.Normalize(idx, info)
     if type(idx) == "table" and info == nil then
@@ -1661,17 +3441,66 @@ function Widget.Normalize(idx, info)
     return idx, info or {}
 end
 
-function Widget.Register(option, idx, info)
+local function BindWidgetReactivity(option, spec)
+    local boundRef = (spec.Bind and Reactive.IsRef(spec.Bind)) and spec.Bind or Reactive.Ref(option.Value)
+    option.Ref = boundRef
+    if spec.Bind and Reactive.IsRef(spec.Bind) and spec.Bind:Get() ~= nil then
+        option.Value = spec.Bind:Get()
+    end
+    Reactive.Watch(boundRef, function(nextVal)
+        if not option._syncingRef and option.SetValue and nextVal ~= option.Value then
+            option:SetValue(nextVal)
+        end
+    end)
+    if spec.Visible ~= nil then
+        if Reactive.IsRef(spec.Visible) then
+            Reactive.Effect(function()
+                option:SetVisible(spec.Visible:Get() == true)
+            end)
+        elseif type(spec.Visible) == "boolean" then
+            option:SetVisible(spec.Visible)
+        end
+    end
+    if spec.Disabled ~= nil then
+        if Reactive.IsRef(spec.Disabled) then
+            Reactive.Effect(function()
+                option:SetDisabled(spec.Disabled:Get() == true)
+            end)
+        elseif type(spec.Disabled) == "boolean" then
+            option:SetDisabled(spec.Disabled)
+        end
+    end
+    if spec.DependsOn then
+        local depKey = type(spec.DependsOn) == "table" and spec.DependsOn[1] or spec.DependsOn
+        local expected = type(spec.DependsOn) == "table" and spec.DependsOn[2] or true
+        task.defer(function()
+            local target = Library.Options[depKey] or Library.Toggles[depKey]
+            if target and target.OnChanged then
+                local function CheckDep(currentVal)
+                    option:SetVisible(currentVal == expected)
+                end
+                CheckDep(target.Value)
+                target:OnChanged(CheckDep)
+            end
+        end)
+    end
+end
+
+function Widget.Register(option, idx, spec)
     option.Idx = idx
-    option.Callback = info.Callback or info.Func
+    option.Callback = spec.Callback or spec.Func
     option.Changed = {}
-    option.NoSave = info.NoSave == true or idx == nil
+    option.NoSave = spec.NoSave == true or idx == nil
     if idx ~= nil then
         Library.Options[idx] = option
     end
-    if info.Tooltip and option.Row then
-        Tooltip.Attach(option.Row.Holder, info.Tooltip)
+    if spec.Tooltip and option.Row then
+        Tooltip.Attach(option.Row.Holder, spec.Tooltip)
     end
+    if spec.Badge and option.SetBadge then
+        option:SetBadge(spec.Badge, spec.BadgeColor)
+    end
+    BindWidgetReactivity(option, spec)
 end
 
 function Widget:OnChanged(callback)
@@ -1698,8 +3527,16 @@ function Widget:PassGuards(value)
 end
 
 function Widget:Fire()
+    if self.Disabled then
+        return
+    end
     if not self:PassGuards(self.Value) then
         return
+    end
+    if self.Ref then
+        self._syncingRef = true
+        self.Ref:Set(self.Value)
+        self._syncingRef = false
     end
     Util.Try(self.Callback, self.Value)
     for _, callback in ipairs(self.Changed) do
@@ -1716,17 +3553,73 @@ function Widget:Deserialize(saved)
 end
 
 function Widget:SetVisible(visible)
+    if not self.Item then
+        return self
+    end
     self.Item.Hidden = not visible
     self.Container:MarkDirty()
-end
-
-function Widget:AddKeyPicker(idx, info)
-    KeyPicker.New(self.Row, idx, info or {}, self.Type == "Toggle" and self or nil)
     return self
 end
 
-function Widget:AddColorPicker(idx, info)
-    ColorPicker.New(self.Row, idx, info or {})
+function Widget:SetDisabled(disabled)
+    self.Disabled = disabled == true
+    local holder = (self.Row and self.Row.Holder) or (self.Item and self.Item.Frame)
+    if holder then
+        if not self.DisableMask and self.Disabled then
+            self.DisableMask = Draw.Box("TextButton", {
+                Text = "",
+                AutoButtonColor = false,
+                BackgroundTransparency = 0.45,
+                Size = UDim2.fromScale(1, 1),
+                ZIndex = 15,
+                Parent = holder,
+            }, "Panel", nil, 8)
+        end
+        if self.DisableMask then
+            self.DisableMask.Visible = self.Disabled
+        end
+    end
+    return self
+end
+
+function Widget:Flash(colorToken)
+    local row = self.Row
+    if not row or not row.Holder then
+        return self
+    end
+    if not row.Hover then
+        row.Hover = Draw.Box("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(-4, 0), Size = UDim2.new(1, 8, 1, 0), ZIndex = 1, Parent = row.Holder }, "Hover", nil, 6)
+    end
+    local hover = row.Hover
+    hover.BackgroundColor3 = Theme.Colors[colorToken or "Coin"] or Theme.Colors.Coin
+    hover.BackgroundTransparency = 0.25
+    Anim.Tween(hover, { BackgroundTransparency = 1, BackgroundColor3 = Theme.Colors.Hover }, 0.55)
+    return self
+end
+
+function Widget:SetBadge(text, colorToken)
+    if not self.Row then
+        return self
+    end
+    if not self.BadgePill then
+        self.BadgePill = Gui.Badge(self.Row.Right, { Text = text, Color = colorToken or "Coin" })
+        self.Row:AddRight(self.BadgePill.Frame, self.BadgePill.Width)
+    else
+        self.BadgePill:SetText(text)
+        if colorToken then
+            self.BadgePill:SetColor(colorToken)
+        end
+    end
+    return self
+end
+
+function Widget:AddKeyPicker(idx, spec)
+    KeyPicker.New(self.Row, idx, spec or {}, self.Type == "Toggle" and self or nil)
+    return self
+end
+
+function Widget:AddColorPicker(idx, spec)
+    ColorPicker.New(self.Row, idx, spec or {})
     return self
 end
 
@@ -1735,24 +3628,34 @@ function Row.LineHeight(kind)
 end
 
 function Row.SearchText(info)
-    return Lang.SearchText(info.Text or info.Title) .. " " .. Lang.SearchText(info.Description)
+    local parts = { Lang.SearchText(info.Text or info.Title), Lang.SearchText(info.Description) }
+    if type(info.Values) == "table" then
+        for _, v in ipairs(info.Values) do
+            table.insert(parts, Lang.SearchText(Dropdown and Dropdown.FormatValue and Dropdown.FormatValue(v) or v))
+        end
+    end
+    return table.concat(parts, " ")
 end
 
---@return row แถวข้อความซ้าย + ช่องควบคุมขวา สูงตามข้อความที่ตัดบรรทัด
-function Row.New(container, info, options)
+--@return row Left text + right control slot, auto-sized to wrapped text height
+function Row.New(container, spec, options)
     options = options or {}
     local holder = Draw.New("Frame", { Name = "Row", BackgroundTransparency = 1 })
-    local row = setmetatable({ Holder = holder, Container = container, RightWidth = 0, RightCount = 0, TitleFont = options.TitleFont or "Body" }, { __index = Row })
-    row.Hover = Draw.Box("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(-6, 0), Size = UDim2.new(1, 12, 1, 0), ZIndex = 1, Parent = holder }, "Hover", nil, 8)
-    row.Title = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 3, Parent = holder }, row.TitleFont, options.TitleSize or Util.TextSize("Label"), options.TitleToken or "Text", info.Text or info.Title or "")
-    if info.Description then
-        row.Desc = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 3, Parent = holder }, "Desc", Util.TextSize("Desc"), "SubText", info.Description)
+    local row = setmetatable({ Holder = holder, Container = container, RightWidth = 0, RightCount = 0, TitleFont = options.TitleFont or "Body", IconOffset = 0 }, { __index = Row })
+    if spec.Icon then
+        row.Icon = Icons.Create(holder, spec.Icon, 16, nil, spec.Text or spec.Title)
+        row.Icon.AnchorPoint = Vector2.new(0, 0.5)
+        row.Icon.ZIndex = 3
+        row.IconOffset = 22
+    end
+    row.Title = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 3, Parent = holder }, row.TitleFont, options.TitleSize or Util.TextSize("Label"), options.TitleToken or "Text", spec.Text or spec.Title or "")
+    if spec.Description then
+        row.Desc = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 3, Parent = holder }, "Desc", Util.TextSize("Desc"), "SubText", spec.Description)
     end
     row.Right = Draw.New("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0), ZIndex = 4, Parent = holder })
     Draw.List(row.Right, 6, true, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
     if options.Clickable then
         row.Hit = Draw.New("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = holder })
-        Row.BindHover(row.Hit, row.Hover)
     end
     row.Item = container:Add(holder, {
         Height = function(width)
@@ -1761,25 +3664,16 @@ function Row.New(container, info, options)
         OnLayout = function(width, height)
             row:Arrange(width, height)
         end,
-        Search = Row.SearchText(info),
+        Search = Row.SearchText(spec),
     })
     return row
 end
 
-function Row.BindHover(button, hover)
-    if State.Touch then
-        return
-    end
-    button.MouseEnter:Connect(function()
-        Anim.Tween(hover, { BackgroundTransparency = 0.45 }, Config.Tween.Fast)
-    end)
-    button.MouseLeave:Connect(function()
-        Anim.Tween(hover, { BackgroundTransparency = 1 }, Config.Tween.Fast)
-    end)
+function Row.BindHover()
 end
 
 function Row:Measure(width)
-    local textWidth = math.max(20, width - self.RightWidth - (self.RightWidth > 0 and 10 or 0))
+    local textWidth = math.max(20, width - self.IconOffset - self.RightWidth - (self.RightWidth > 0 and 10 or 0))
     local titleHeight = Layout.Measure(self.Title.Text, self.Title.TextSize, self.TitleFont, textWidth).Y
     local descHeight = self.Desc and Layout.Measure(self.Desc.Text, self.Desc.TextSize, "Desc", textWidth).Y or 0
     self.TextWidth, self.TitleHeight, self.DescHeight = textWidth, titleHeight, descHeight
@@ -1790,10 +3684,13 @@ end
 function Row:Arrange(_, height)
     local content = self.TitleHeight + (self.Desc and self.DescHeight + 2 or 0)
     local top = math.floor((height - content) / 2)
-    self.Title.Position = UDim2.fromOffset(0, top)
+    if self.Icon then
+        self.Icon.Position = UDim2.new(0, 0, 0.5, 0)
+    end
+    self.Title.Position = UDim2.fromOffset(self.IconOffset, top)
     self.Title.Size = UDim2.fromOffset(self.TextWidth, self.TitleHeight)
     if self.Desc then
-        self.Desc.Position = UDim2.fromOffset(0, top + self.TitleHeight + 2)
+        self.Desc.Position = UDim2.fromOffset(self.IconOffset, top + self.TitleHeight + 2)
         self.Desc.Size = UDim2.fromOffset(self.TextWidth, self.DescHeight)
     end
     self.Right.Size = UDim2.new(0, self.RightWidth, 1, 0)
@@ -1825,14 +3722,18 @@ function Row:SetTitle(text)
     self.Container:MarkDirty()
 end
 
---@return stack ข้อความบน + ช่องควบคุมเต็มความกว้างด้านล่าง
-function Row.Stack(container, info, controlHeight)
+--@return stack Top label + full-width bottom control slot
+function Row.Stack(container, spec, controlHeight)
     local holder = Draw.New("Frame", { Name = "Stack", BackgroundTransparency = 1 })
-    local stack = setmetatable({ Holder = holder, Container = container, ControlHeight = controlHeight }, { __index = Row })
-    stack.Title = Draw.Text({ TextTruncate = Enum.TextTruncate.AtEnd, Parent = holder }, "Body", Util.TextSize("Label"), info.Risky and "Risky" or "Text", info.Text or info.Title or "")
+    local stack = setmetatable({ Holder = holder, Container = container, ControlHeight = controlHeight, IconOffset = 0 }, { __index = Row })
+    if spec.Icon then
+        stack.Icon = Icons.Create(holder, spec.Icon, 16, nil, spec.Text or spec.Title)
+        stack.IconOffset = 22
+    end
+    stack.Title = Draw.Text({ TextTruncate = Enum.TextTruncate.AtEnd, Parent = holder }, "Body", Util.TextSize("Label"), spec.Risky and "Risky" or "Text", spec.Text or spec.Title or "")
     stack.Aside = Draw.Text({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), TextXAlignment = Enum.TextXAlignment.Right, Parent = holder }, "Body", Util.TextSize("Label"), "SubText")
-    if info.Description then
-        stack.Desc = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Parent = holder }, "Desc", Util.TextSize("Desc"), "SubText", info.Description)
+    if spec.Description then
+        stack.Desc = Draw.Text({ TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top, Parent = holder }, "Desc", Util.TextSize("Desc"), "SubText", spec.Description)
     end
     stack.Control = Draw.New("Frame", { Name = "Control", BackgroundTransparency = 1, Parent = holder })
     stack.Item = container:Add(holder, {
@@ -1842,7 +3743,7 @@ function Row.Stack(container, info, controlHeight)
         OnLayout = function(width)
             stack:ArrangeStack(width)
         end,
-        Search = Row.SearchText(info),
+        Search = Row.SearchText(spec),
     })
     return stack
 end
@@ -1858,7 +3759,11 @@ end
 
 function Row:ArrangeStack(width)
     local asideWidth = self.AsideWidth or (self.Aside.Text ~= "" and (Layout.Measure(self.Aside.Text, self.Aside.TextSize, "Body", width).X + 8) or 0)
-    self.Title.Size = UDim2.fromOffset(math.max(10, width - asideWidth), self.LineHeight)
+    if self.Icon then
+        self.Icon.Position = UDim2.fromOffset(0, math.max(0, math.floor((self.LineHeight - 16) / 2)))
+    end
+    self.Title.Position = UDim2.fromOffset(self.IconOffset, 0)
+    self.Title.Size = UDim2.fromOffset(math.max(10, width - self.IconOffset - asideWidth), self.LineHeight)
     self.Aside.Size = UDim2.fromOffset(asideWidth, self.LineHeight)
     if self.Desc then
         self.Desc.Position = UDim2.fromOffset(0, self.LineHeight)
@@ -1913,15 +3818,20 @@ function Toggle:BuildSwitch()
         Size = UDim2.fromOffset(knobSize, knobSize),
         Parent = self.Track,
     }, "Knob", "Outline", UDim.new(1, 0), 2)
-    self.Mark = Draw.Text({ Text = "★", Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextTransparency = 1, Parent = self.Knob }, "Glyph", knobSize - 3, "CoinDark")
+    self.Mark = Icons.Vector(self.Knob, "check", knobSize - 2, "Good")
+    self.Mark.AnchorPoint = Vector2.new(0.5, 0.5)
+    self.Mark.Position = UDim2.fromScale(0.5, 0.5)
+    self.MarkScale = Draw.New("UIScale", { Scale = self.Value and 1 or 0, Parent = self.Mark })
     self.Row:AddRight(self.Track, size.X)
 end
 
 function Toggle:BuildCheckbox()
     local size = Util.Metric("Check")
     self.Track = Draw.Box("Frame", { Size = UDim2.fromOffset(size, size) }, "Element", "Outline", 6, 2)
-    self.Mark = Draw.Text({ Text = "✓", Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextTransparency = 1, Parent = self.Track }, "Glyph", size - 4, "Ink")
-    self.MarkScale = Draw.New("UIScale", { Parent = self.Mark })
+    self.Mark = Icons.Vector(self.Track, "check", size - 4, "Ink")
+    self.Mark.AnchorPoint = Vector2.new(0.5, 0.5)
+    self.Mark.Position = UDim2.fromScale(0.5, 0.5)
+    self.MarkScale = Draw.New("UIScale", { Scale = self.Value and 1 or 0, Parent = self.Mark })
     self.Row:AddRight(self.Track, size)
 end
 
@@ -1930,15 +3840,24 @@ function Toggle:Render(instant)
     local duration = instant and 0 or Config.Tween.Normal
     if self.Knob then
         local travel = self.Track.Size.X.Offset - self.KnobSize - 3
+        local targetPos = UDim2.new(0, on and travel or 3, 0.5, 0)
         Anim.Tween(self.Track, { BackgroundColor3 = Theme.Colors[on and "Good" or "Track"] }, duration)
-        Anim.Tween(self.Knob, { Position = UDim2.new(0, on and travel or 3, 0.5, 0) }, duration, "Back")
+        if instant then
+            Motion.Set(self.Knob, "Position", targetPos)
+        else
+            Motion.Spring(self.Knob, "Position", targetPos, "Fast", { Damping = 0.58 })
+            Fx.Squash(self.Knob, 1.9)
+        end
     else
         Anim.Tween(self.Track, { BackgroundColor3 = Theme.Colors[on and "Coin" or "Element"] }, duration)
-        if on and not instant then
-            Anim.Pop(self.MarkScale, 0.4)
+    end
+    if self.MarkScale then
+        if instant then
+            Motion.Set(self.MarkScale, "Scale", on and 1 or 0)
+        else
+            Motion.Spring(self.MarkScale, "Scale", on and 1 or 0, "Fast", { Damping = 0.58 })
         end
     end
-    Anim.Tween(self.Mark, { TextTransparency = on and 0 or 1 }, duration)
 end
 
 function Toggle:SetValue(value)
@@ -1964,7 +3883,7 @@ function Container:AddSlider(idx, info)
         FinishedOnly = info.Finished == true,
         Container = self,
     }, Slider)
-    slider.Value = math.clamp(tonumber(info.Default) or slider.Min, slider.Min, slider.Max)
+    slider.Value = Util.Round(math.clamp(tonumber(info.Default) or slider.Min, slider.Min, slider.Max), slider.Rounding)
     slider.Row = Row.Stack(self, info, knob + 4)
     slider.Item = slider.Row.Item
     slider:Build(knob)
@@ -1973,6 +3892,7 @@ function Container:AddSlider(idx, info)
     slider:Render(false)
     Lang.OnChange(slider, function()
         slider:MeasureAside()
+        slider:Render(false)
         slider.Container:MarkDirty()
     end)
     return slider
@@ -2003,10 +3923,9 @@ end
 
 function Slider:MeasureAside()
     local widest = 0
-    for _, value in ipairs({ self.Min, self.Max, (self.Min + self.Max) / 2 }) do
-        self.Value, value = value, self.Value
-        widest = math.max(widest, Layout.Measure(self:Format(), self.Row.Aside.TextSize, "Body", 400).X)
-        self.Value = value
+    local mid = Util.Round((self.Min + self.Max) / 2, self.Rounding)
+    for _, sample in ipairs({ self.Min, self.Max, mid }) do
+        widest = math.max(widest, Layout.Measure(self:Format(sample), self.Row.Aside.TextSize, "Body", 400).X)
     end
     self.Row.AsideWidth = widest + 14
 end
@@ -2034,7 +3953,7 @@ function Slider:BuildValueBox()
 end
 
 function Slider:BeginDrag(input)
-    Anim.Tween(self.KnobScale, { Scale = 1.25 }, Config.Tween.Fast, "Back")
+    Motion.Spring(self.KnobScale, "Scale", 1.24, "Fast", { Damping = 0.52 })
     self.Dragging = true
     self:SetFromX(input.Position.X)
     State.Drag = {
@@ -2042,7 +3961,7 @@ function Slider:BeginDrag(input)
             self:SetFromX(move.Position.X)
         end,
         Stop = function()
-            Anim.Tween(self.KnobScale, { Scale = 1 }, Config.Tween.Fast, "Back")
+            Motion.Spring(self.KnobScale, "Scale", 1, "Fast", { Damping = 0.58 })
             self.Dragging = false
             if self.PendingFire then
                 self.PendingFire = false
@@ -2058,18 +3977,25 @@ function Slider:SetFromX(screenX)
     self:SetValue(self.Min + (self.Max - self.Min) * fraction)
 end
 
-function Slider:Format()
-    local text = self.Rounding > 0 and string.format("%." .. self.Rounding .. "f", self.Value) or tostring(math.floor(self.Value + 0.5))
-    return self.Prefix .. text .. self.Suffix
+function Slider:Format(targetVal)
+    local num = Util.Round(targetVal ~= nil and targetVal or self.Value, self.Rounding)
+    local formatted = self.Rounding > 0 and string.format("%." .. self.Rounding .. "f", num) or tostring(math.floor(num + 0.5))
+    local pre = Lang.Resolve(self.Prefix or "")
+    local suf = Lang.Resolve(self.Suffix or "")
+    return pre .. formatted .. suf
 end
 
 function Slider:Render(animated)
     local span = self.Max - self.Min
     local fraction = span > 0 and (self.Value - self.Min) / span or 0
-    local duration = animated and 0.08 or 0
-    Anim.Tween(self.Fill, { Size = UDim2.fromScale(fraction, 1) }, duration)
-    Anim.Tween(self.Knob, { Position = UDim2.fromScale(fraction, 0.5) }, duration)
-    local text = self:Format()
+    if animated then
+        Motion.Spring(self.Fill, "Size", UDim2.fromScale(fraction, 1), "Fast")
+        Motion.Spring(self.Knob, "Position", UDim2.fromScale(fraction, 0.5), "Fast", { Damping = 0.68 })
+    else
+        Motion.Set(self.Fill, "Size", UDim2.fromScale(fraction, 1))
+        Motion.Set(self.Knob, "Position", UDim2.fromScale(fraction, 0.5))
+    end
+    local text = self:Format(self.Value)
     self.Row.Aside.Text = text
     if not self.ValueBox:IsFocused() then
         self.ValueBox.Text = text
@@ -2115,7 +4041,7 @@ function Slider:SetMin(min)
     self:SetRange(min, self.Max)
 end
 
---@return face ปุ่มกล่องสำหรับ dropdown/input
+--@return face Field button frame for dropdown/input
 function Draw.Field(parent, className)
     local field = Draw.Box(className or "TextButton", { Size = UDim2.fromScale(1, 1), Parent = parent }, "Element", "Outline", 8, 2)
     return field
@@ -2157,7 +4083,9 @@ function Dropdown:Build()
     self.Display = Draw.Text({ Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -44, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, Parent = field }, "Body", Util.TextSize("Label"), "Text")
     self:EnsureThumb()
     local cap = Draw.Box("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -4, 0.5, 0), Size = UDim2.new(0, 26, 1, -8), Parent = field }, "Accent", "Outline", 6, 2)
-    self.Chevron = Draw.Text({ Text = "▼", Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Parent = cap }, "Glyph", 11, "White")
+    self.Chevron = Icons.Vector(cap, "chevron_down", 14, "White")
+    self.Chevron.AnchorPoint = Vector2.new(0.5, 0.5)
+    self.Chevron.Position = UDim2.fromScale(0.5, 0.5)
     field.MouseEnter:Connect(function()
         if not State.Touch then
             Anim.Tween(field, { BackgroundColor3 = Theme.Colors.Hover }, Config.Tween.Fast)
@@ -2217,11 +4145,25 @@ function Dropdown:GetActiveValues()
     return active
 end
 
+function Dropdown.FormatValue(entry)
+    if type(entry) == "table" then
+        if entry.EN or entry.TH then
+            return Lang.Resolve(entry)
+        end
+        return Lang.Resolve(entry.Text or entry.Label or entry.Value or "")
+    end
+    return tostring(entry or "")
+end
+
 function Dropdown:Render()
     local active = self:GetActiveValues()
-    local text = #active > 0 and table.concat(active, ", ") or Lang.Resolve(self.Placeholder or Lang.Strings.None)
+    local labels = {}
+    for _, entry in ipairs(active) do
+        table.insert(labels, Dropdown.FormatValue(entry))
+    end
+    local text = #labels > 0 and table.concat(labels, ", ") or Lang.Resolve(self.Placeholder or Lang.Strings.None)
     self.Display.Text = text
-    Theme.Bind(self.Display, { TextColor3 = #active > 0 and "Text" or "Muted" })
+    Theme.Bind(self.Display, { TextColor3 = #labels > 0 and "Text" or "Muted" })
     if self.Thumb then
         self.Thumb.Image = self.Images[self.Value] or ""
         local tint = self.Colors and self.Colors[self.Value]
@@ -2229,8 +4171,8 @@ function Dropdown:Render()
     end
 end
 
---@param images table? ชื่อ -> asset id
---@param colors table? ชื่อ -> Color3
+--@param images table? value -> asset id
+--@param colors table? value -> Color3
 function Dropdown:SetImages(images, colors)
     self.Images = images
     self.Colors = colors
@@ -2397,18 +4339,27 @@ function Button.Create(container, info, callback, after)
     local style = Button.Styles[info.Style or "Default"] or Button.Styles.Default
     local button = setmetatable({ Container = container, Info = info, Func = info.Func or info.Callback or callback, Style = style, Armed = false }, Button)
     local holder, face, _, depth = Draw.Block(nil, style.Face, style.Shade, 10, 4)
+    face.ClipsDescendants = true
     button.Holder, button.Face, button.Depth = holder, face, depth
-    button.Label = Draw.Text({ Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, Parent = face }, "Body", Util.TextSize("Button"), style.Text, info.Text or "")
-    Draw.Padding(button.Label, 0, 8, 0, 8)
+    local content = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 3, Parent = face })
+    Draw.List(content, 6, true, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+    Draw.Padding(content, 0, 8, 0, 8)
+    local iconExtra = 0
+    if info.Icon then
+        local icon = Icons.Create(content, info.Icon, 16, style.Text, info.Text)
+        icon.LayoutOrder = 1
+        iconExtra = 22
+    end
+    button.Label = Draw.Text({ LayoutOrder = 2, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromScale(0, 1), TextXAlignment = Enum.TextXAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, Parent = content }, "Body", Util.TextSize("Button"), style.Text, info.Text or info.Title or "")
     button.Hit = Draw.New("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5, Parent = holder })
     button:BindPress()
     button.Group = { button }
     button.Item = container:Add(holder, {
         Height = Util.Metric("Box") + depth,
         After = after,
-        Search = Lang.SearchText(info.Text),
+        Search = Lang.SearchText(info.Text or info.Title),
         AutoWidth = function()
-            return Layout.Measure(button.Label.Text, button.Label.TextSize, "Body", 1000).X + 36
+            return Layout.Measure(button.Label.Text, button.Label.TextSize, "Body", 1000).X + iconExtra + 36
         end,
     })
     if info.Tooltip then
@@ -2429,15 +4380,16 @@ function Button:BindPress()
     end)
     hit.MouseLeave:Connect(function()
         Anim.Tween(face, { BackgroundColor3 = faceColor() }, Config.Tween.Fast)
-        Anim.Tween(face, { Position = UDim2.new() }, Config.Tween.Fast)
+        Motion.Spring(face, "Position", UDim2.new(), "Fast")
     end)
     hit.MouseButton1Down:Connect(function()
-        Anim.Tween(face, { Position = UDim2.fromOffset(0, self.Depth - 1) }, 0.06, "Linear")
+        Motion.Spring(face, "Position", UDim2.fromOffset(0, self.Depth - 1), "Fast")
     end)
     hit.MouseButton1Up:Connect(function()
-        Anim.Tween(face, { Position = UDim2.new() }, Config.Tween.Normal, "Back")
+        Motion.Spring(face, "Position", UDim2.new(), "Fast", { Damping = 0.56 })
     end)
     hit.Activated:Connect(function()
+        Fx.Ripple(face, nil, "White")
         self:Click()
     end)
 end
@@ -2552,9 +4504,9 @@ function Container:AddSeparatorText(text)
     return self
 end
 
---@return parts ปุ่มแถวที่เลือกได้ (ImGui Selectable) ใช้ร่วมกันทั้ง list, sidebar, popup
---@param image string? asset id ของรูป
---@param tint Color3? สีขอบ (เช่นสี rarity) ไม่ใส่ = สีขอบธีม
+--@return parts Selectable row primitive shared across lists, sidebar, and popups
+--@param image string? Optional icon asset id
+--@param tint Color3? Optional border tint (defaults to theme outline)
 function Draw.Thumb(parent, image, tint, size, position)
     local tile = Draw.Box("ImageLabel", {
         Name = "Thumb",
@@ -2577,26 +4529,56 @@ end
 
 function Selectable.Build(text, options)
     options = options or {}
-    local button = Draw.Box("TextButton", { Name = "Selectable", BackgroundTransparency = 1 }, "Hover", nil, 8)
-    local inset = 10
+    local textSpec = text
+    local iconSpec = options.Icon
+    if type(text) == "table" and not text.EN and not text.TH then
+        textSpec = text.Text or text.Label or text.Value or ""
+        iconSpec = iconSpec or text.Icon
+    end
+    local button = Draw.Box("TextButton", { Name = "Selectable", BackgroundTransparency = 1, ClipsDescendants = true }, "Hover", nil, 8)
+    local bar = Draw.Box("Frame", {
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, 3, 0.5, 0),
+        Size = UDim2.fromOffset(3, 0),
+        Parent = button,
+    }, "Coin", nil, 2)
+    local inset = 12
     if options.Image then
         local size = Util.Metric("Item") - 6
-        Draw.Thumb(button, options.Image, options.Tint, size)
-        inset = size + 12
+        Draw.Thumb(button, options.Image, options.Tint, size, UDim2.new(0, 8, 0.5, 0))
+        inset = size + 16
+    elseif iconSpec then
+        local icon = Icons.Create(button, iconSpec, 16, nil, textSpec)
+        icon.AnchorPoint = Vector2.new(0, 0.5)
+        icon.Position = UDim2.new(0, 10, 0.5, 0)
+        inset = 32
     elseif options.Tint then
-        Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 4, 0.5, 0), Size = UDim2.new(0, 4, 1, -10), BackgroundColor3 = options.Tint, Parent = button }, nil, nil, 2)
-        inset = 14
+        Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.new(0, 4, 1, -10), BackgroundColor3 = options.Tint, Parent = button }, nil, nil, 2)
+        inset = 18
     end
-    local label = Draw.Text({ Position = UDim2.fromOffset(inset, 0), Size = UDim2.new(1, -(inset + 26), 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, Parent = button }, "Body", Util.TextSize("Label"), "Text", text)
-    local mark = Draw.Text({ Text = options.Multi and "✓" or "★", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(18, 18), TextXAlignment = Enum.TextXAlignment.Center, TextTransparency = 1, Parent = button }, "Glyph", Util.TextSize("Label"), "OnAccent")
-    local parts = { Button = button, Label = label, Mark = mark, Selected = false, Hovered = false }
+    local label = Draw.Text({ Position = UDim2.fromOffset(inset, 0), Size = UDim2.new(1, -(inset + 26), 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, Parent = button }, "Body", Util.TextSize("Label"), "Text", textSpec)
+    local mark = Icons.Vector(button, "check", 15, "OnAccent")
+    mark.AnchorPoint = Vector2.new(1, 0.5)
+    mark.Position = UDim2.new(1, -8, 0.5, 0)
+    local markScale = Draw.New("UIScale", { Scale = 0, Parent = mark })
+    local parts = { Button = button, Label = label, Mark = mark, MarkScale = markScale, Bar = bar, Selected = false, Hovered = false }
     function parts.Render(instant)
         local duration = instant and 0 or Config.Tween.Fast
         local fill = parts.Selected and Theme.Colors.Accent or Theme.Colors.Hover
-        local alpha = parts.Selected and 0 or (parts.Hovered and 0.35 or 1)
+        local alpha = parts.Selected and 0 or (parts.Hovered and 0.45 or 1)
         Anim.Tween(button, { BackgroundColor3 = fill, BackgroundTransparency = alpha }, duration)
         Anim.Tween(label, { TextColor3 = Theme.Colors[parts.Selected and "OnAccent" or "Text"] }, duration)
-        Anim.Tween(mark, { TextTransparency = parts.Selected and 0 or 1 }, duration)
+        if instant then
+            Motion.Set(markScale, "Scale", parts.Selected and 1 or 0)
+        else
+            Motion.Spring(markScale, "Scale", parts.Selected and 1 or 0, "Fast", { Damping = 0.6 })
+        end
+        local barHeight = parts.Selected and (Util.Metric("Item") - 10) or 0
+        if instant then
+            Motion.Set(bar, "Size", UDim2.fromOffset(3, barHeight))
+        else
+            Motion.Spring(bar, "Size", UDim2.fromOffset(3, barHeight), "Fast")
+        end
     end
     function parts.SetSelected(selected, instant)
         parts.Selected = selected
@@ -2737,10 +4719,16 @@ end
 
 Progress.SetVisible = Widget.SetVisible
 
---@param info { Height = px (ไม่ใส่ = สูงตามเนื้อหา), Border = true }
-function Container:AddChild(info)
+--@param info { Height = px (nil = auto-fit content), Border = true }
+function Container:AddChild(id, info)
+    if Gui and Gui.BeginChild then
+        return Gui.BeginChild(self, id, info)
+    end
+    if type(id) == "table" and info == nil then
+        info, id = id, nil
+    end
     info = info or {}
-    local holder = Draw.New("Frame", { Name = "Child", BackgroundTransparency = 1 })
+    local holder = Draw.New("Frame", { Name = tostring(id or "Child"), BackgroundTransparency = 1 })
     local frame = Draw.Box("Frame", { Size = UDim2.fromScale(1, 1), Parent = holder }, info.Border ~= false and "Element" or nil, info.Border ~= false and "Track" or nil, 10, 2)
     if info.Border ~= false then
         frame.BackgroundTransparency = 0.4
@@ -2776,8 +4764,418 @@ function Container:AddColorPicker(idx, info)
     return picker
 end
 
+-- Extended Framework Widgets (WindUI + SpellUI + ReactBits)
+function Container:AddStepper(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local stepVal = spec.Step or 1
+    local stepper = setmetatable({
+        Type = "Stepper",
+        Min = spec.Min or -1e9,
+        Max = spec.Max or 1e9,
+        Step = stepVal,
+        Rounding = spec.Rounding or (math.floor(stepVal) ~= stepVal and 2 or 0),
+        Container = self,
+    }, Stepper)
+    stepper.Value = Util.Round(math.clamp(tonumber(spec.Default) or math.max(0, stepper.Min), stepper.Min, stepper.Max), stepper.Rounding)
+    stepper.Row = Row.New(self, spec)
+    stepper.Item = stepper.Row.Item
+    stepper:Build()
+    Widget.Register(stepper, idx, spec)
+    stepper:Render(true)
+    return stepper
+end
 
---@return card, face, scale การ์ดลอยมีเงาแข็งแบบบล็อก ขนาด width x height (ไม่รวมเงา)
+function Stepper:Build()
+    local height = Util.Metric("Box") - 4
+    local box = Draw.Box("Frame", { Size = UDim2.fromOffset(108, height) }, "Element", "Outline", 8, 2)
+    local minusBtn = Draw.Box("TextButton", { Position = UDim2.fromOffset(2, 2), Size = UDim2.fromOffset(height - 4, height - 4), Parent = box }, "Hover", nil, 6)
+    Icons.Vector(minusBtn, "minus", 14, "Text").Position = UDim2.fromScale(0.18, 0.18)
+    local plusBtn = Draw.Box("TextButton", { AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -2, 0, 2), Size = UDim2.fromOffset(height - 4, height - 4), Parent = box }, "Accent", nil, 6)
+    Icons.Vector(plusBtn, "plus", 14, "OnAccent").Position = UDim2.fromScale(0.18, 0.18)
+    self.Readout = Draw.Text({
+        Position = UDim2.fromOffset(height, 0),
+        Size = UDim2.new(1, -height * 2, 1, 0),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = box,
+    }, "Strong", Util.TextSize("Label"), "Text", tostring(self.Value))
+    minusBtn.Activated:Connect(function()
+        Fx.Squash(minusBtn, 1.8)
+        self:SetValue(self.Value - self.Step)
+    end)
+    plusBtn.Activated:Connect(function()
+        Fx.Squash(plusBtn, 1.8)
+        self:SetValue(self.Value + self.Step)
+    end)
+    self.Row:AddRight(box, 108)
+end
+
+function Stepper:Render(instant)
+    local formatted = self.Rounding > 0 and string.format("%." .. self.Rounding .. "f", self.Value) or tostring(math.floor(self.Value + 0.5))
+    if instant or not self.PrevValue then
+        self.Readout.Text = formatted
+    else
+        Fx.CountUp(self, self.PrevValue, self.Value, 0.18, function(cur)
+            local num = Util.Round(cur, self.Rounding)
+            self.Readout.Text = self.Rounding > 0 and string.format("%." .. self.Rounding .. "f", num) or tostring(math.floor(num + 0.5))
+        end)
+    end
+    self.PrevValue = self.Value
+end
+
+function Stepper:SetValue(nextVal)
+    local num = tonumber(nextVal)
+    if not num then
+        return
+    end
+    num = Util.Round(math.clamp(num, self.Min, self.Max), self.Rounding)
+    if num == self.Value then
+        return
+    end
+    self.Value = num
+    self:Render(false)
+    self:Fire()
+end
+
+function Container:AddRangeSlider(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local knobSize = Util.Metric("Knob")
+    local minBound, maxBound = spec.Min or 0, spec.Max or 100
+    local defTable = type(spec.Default) == "table" and spec.Default or { minBound, maxBound }
+    local range = setmetatable({
+        Type = "RangeSlider",
+        Min = minBound,
+        Max = maxBound,
+        Rounding = spec.Rounding or 0,
+        Suffix = spec.Suffix or "",
+        Container = self,
+    }, RangeSlider)
+    local low = Util.Round(math.clamp(tonumber(defTable[1]) or minBound, minBound, maxBound), range.Rounding)
+    local high = Util.Round(math.clamp(tonumber(defTable[2]) or maxBound, low, maxBound), range.Rounding)
+    range.Value = { low, high }
+    range.Row = Row.Stack(self, spec, knobSize + 4)
+    range.Item = range.Row.Item
+    range:Build(knobSize)
+    Widget.Register(range, idx, spec)
+    range:Render(false)
+    return range
+end
+
+function RangeSlider:Build(knobSize)
+    local control = self.Row.Control
+    local trackHeight = Util.Metric("Track")
+    self.Track = Draw.Box("Frame", {
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, knobSize / 2, 0.5, 0),
+        Size = UDim2.new(1, -knobSize, 0, trackHeight),
+        Parent = control,
+    }, "Track", "Outline", UDim.new(1, 0), 2)
+    self.Fill = Draw.Box("Frame", { Size = UDim2.fromScale(1, 1), Parent = self.Track }, "Accent", nil, UDim.new(1, 0))
+    self.KnobLow = Draw.Box("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(knobSize, knobSize), Position = UDim2.fromScale(0, 0.5), ZIndex = 3, Parent = self.Track }, "Coin", "Outline", UDim.new(1, 0), 2)
+    self.KnobHigh = Draw.Box("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(knobSize, knobSize), Position = UDim2.fromScale(1, 0.5), ZIndex = 4, Parent = self.Track }, "Coin", "Outline", UDim.new(1, 0), 2)
+    local hit = Draw.New("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 6), Position = UDim2.fromOffset(0, -3), ZIndex = 5, Parent = control })
+    hit.InputBegan:Connect(function(input)
+        if Util.IsPointer(input) then
+            self:BeginDrag(input)
+        end
+    end)
+end
+
+function RangeSlider:BeginDrag(input)
+    local left, width = self.Track.AbsolutePosition.X, math.max(1, self.Track.AbsoluteSize.X)
+    local frac = math.clamp((input.Position.X - left) / width, 0, 1)
+    local pickedVal = self.Min + (self.Max - self.Min) * frac
+    local pickHigh = math.abs(pickedVal - self.Value[2]) < math.abs(pickedVal - self.Value[1])
+    local activeKnob = pickHigh and self.KnobHigh or self.KnobLow
+    Fx.Squash(activeKnob, 1.9)
+    local function UpdateFromX(screenX)
+        local ratio = math.clamp((screenX - self.Track.AbsolutePosition.X) / math.max(1, self.Track.AbsoluteSize.X), 0, 1)
+        local raw = self.Min + (self.Max - self.Min) * ratio
+        if pickHigh then
+            self:SetValue({ self.Value[1], math.max(self.Value[1], raw) })
+        else
+            self:SetValue({ math.min(self.Value[2], raw), self.Value[2] })
+        end
+    end
+    UpdateFromX(input.Position.X)
+    State.Drag = {
+        Move = function(move)
+            UpdateFromX(move.Position.X)
+        end,
+        Stop = function()
+            Fx.Squash(activeKnob, 1.4)
+        end,
+    }
+end
+
+function RangeSlider:Render(animated)
+    local span = math.max(1e-6, self.Max - self.Min)
+    local lowFrac = math.clamp((self.Value[1] - self.Min) / span, 0, 1)
+    local highFrac = math.clamp((self.Value[2] - self.Min) / span, lowFrac, 1)
+    if animated then
+        Motion.Spring(self.Fill, "Position", UDim2.fromScale(lowFrac, 0), "Fast")
+        Motion.Spring(self.Fill, "Size", UDim2.fromScale(highFrac - lowFrac, 1), "Fast")
+        Motion.Spring(self.KnobLow, "Position", UDim2.fromScale(lowFrac, 0.5), "Fast")
+        Motion.Spring(self.KnobHigh, "Position", UDim2.fromScale(highFrac, 0.5), "Fast")
+    else
+        Motion.Set(self.Fill, "Position", UDim2.fromScale(lowFrac, 0))
+        Motion.Set(self.Fill, "Size", UDim2.fromScale(highFrac - lowFrac, 1))
+        Motion.Set(self.KnobLow, "Position", UDim2.fromScale(lowFrac, 0.5))
+        Motion.Set(self.KnobHigh, "Position", UDim2.fromScale(highFrac, 0.5))
+    end
+    local suf = Lang.Resolve(self.Suffix or "")
+    self.Row.Aside.Text = tostring(self.Value[1]) .. suf .. " – " .. tostring(self.Value[2]) .. suf
+end
+
+function RangeSlider:SetValue(pair)
+    if type(pair) ~= "table" then
+        return
+    end
+    local low = Util.Round(math.clamp(tonumber(pair[1]) or self.Min, self.Min, self.Max), self.Rounding)
+    local high = Util.Round(math.clamp(tonumber(pair[2]) or self.Max, low, self.Max), self.Rounding)
+    if low == self.Value[1] and high == self.Value[2] then
+        return
+    end
+    self.Value = { low, high }
+    self:Render(true)
+    self:Fire()
+end
+
+function Container:AddSegmented(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local optionsList = spec.Values or spec.Options or {}
+    local seg = setmetatable({
+        Type = "Segmented",
+        Values = optionsList,
+        Value = spec.Default or optionsList[1],
+        Buttons = {},
+        Container = self,
+    }, Segmented)
+    seg.Row = (spec.Text or spec.Title) and Row.Stack(self, spec, Util.Metric("Box")) or nil
+    local host = seg.Row and seg.Row.Control or Draw.New("Frame", { BackgroundTransparency = 1 })
+    if not seg.Row then
+        seg.Item = self:Add(host, { Height = Util.Metric("Box"), Search = Lang.SearchText(spec.Text) })
+    else
+        seg.Item = seg.Row.Item
+    end
+    seg:Build(host)
+    Widget.Register(seg, idx, spec)
+    seg:Render(true)
+    return seg
+end
+
+function Segmented:Build(host)
+    local bar = Draw.Box("Frame", { Size = UDim2.fromScale(1, 1), Parent = host }, "Element", "Outline", 8, 2)
+    Draw.Padding(bar, 3, 3, 3, 3)
+    local count = math.max(1, #self.Values)
+    self.Thumb = Draw.Box("Frame", {
+        Size = UDim2.fromScale(1 / count, 1),
+        ZIndex = 2,
+        Parent = bar,
+    }, "Accent", nil, 6)
+    for index, optionVal in ipairs(self.Values) do
+        local btn = Draw.Text({
+            ClassName = "TextButton",
+            Position = UDim2.fromScale((index - 1) / count, 0),
+            Size = UDim2.fromScale(1 / count, 1),
+            TextXAlignment = Enum.TextXAlignment.Center,
+            ZIndex = 3,
+            Parent = bar,
+        }, "Strong", Util.TextSize("Label") - 1, "Text", Dropdown.FormatValue(optionVal))
+        btn.AutoButtonColor = false
+        btn.Activated:Connect(function()
+            self:SetValue(optionVal)
+        end)
+        self.Buttons[index] = { Button = btn, Value = optionVal }
+    end
+end
+
+function Segmented:Render(instant)
+    local count = math.max(1, #self.Values)
+    local activeIdx = 1
+    for index, entry in ipairs(self.Buttons) do
+        local isSel = entry.Value == self.Value
+        if isSel then
+            activeIdx = index
+        end
+        Theme.Bind(entry.Button, { TextColor3 = isSel and "OnAccent" or "SubText" })
+    end
+    local targetPos = UDim2.fromScale((activeIdx - 1) / count, 0)
+    local targetSize = UDim2.fromScale(1 / count, 1)
+    if instant then
+        Motion.Set(self.Thumb, "Position", targetPos)
+        Motion.Set(self.Thumb, "Size", targetSize)
+    else
+        Motion.Spring(self.Thumb, "Position", targetPos, "Fast", { Damping = 0.68 })
+        Motion.Spring(self.Thumb, "Size", targetSize, "Fast")
+    end
+end
+
+function Segmented:SetValue(nextVal)
+    if nextVal == self.Value then
+        return
+    end
+    self.Value = nextVal
+    self:Render(false)
+    self:Fire()
+end
+
+function Container:AddStat(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local card = Draw.Box("Frame", { Name = "StatCard" }, "Element", "Outline", 10, 2)
+    Fx.Spotlight(card)
+    local badge = Icons.Badge(card, spec.Icon, 30, spec.Color or "Accent", spec.Title or spec.Text)
+    badge.AnchorPoint = Vector2.new(0, 0.5)
+    badge.Position = UDim2.new(0, 10, 0.5, 0)
+    local titleLabel = Draw.Text({
+        Position = UDim2.fromOffset(48, 6),
+        Size = UDim2.new(1, -56, 0, 16),
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        Parent = card,
+    }, "Desc", Util.TextSize("Desc"), "SubText", spec.Title or spec.Text or "Stat")
+    local valLabel = Draw.Text({
+        Position = UDim2.fromOffset(48, 22),
+        Size = UDim2.new(1, -56, 0, 22),
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        Parent = card,
+    }, "Display", Util.TextSize("Group") + 2, spec.Color or "Text", tostring(spec.Value or spec.Default or "0"))
+    local stat = setmetatable({
+        Type = "Stat",
+        Frame = card,
+        TitleLabel = titleLabel,
+        ValueLabel = valLabel,
+        Prefix = spec.Prefix or "",
+        Suffix = spec.Suffix or "",
+        Value = spec.Value or spec.Default or 0,
+        Container = self,
+    }, StatWidget)
+    stat.Item = self:Add(card, { Width = spec.Width, Height = 50, Search = Row.SearchText(spec) })
+    Widget.Register(stat, idx, spec)
+    return stat
+end
+
+function StatWidget:SetValue(nextVal)
+    local prevNum = tonumber(self.Value)
+    local nextNum = tonumber(nextVal)
+    self.Value = nextVal
+    local pre = Lang.Resolve(self.Prefix or "")
+    local suf = Lang.Resolve(self.Suffix or "")
+    if prevNum and nextNum then
+        Fx.CountUp(self, prevNum, nextNum, 0.25, function(cur)
+            self.ValueLabel.Text = pre .. tostring(math.floor(cur + 0.5)) .. suf
+        end)
+    else
+        self.ValueLabel.Text = pre .. tostring(nextVal) .. suf
+    end
+end
+
+function Container:AddStatus(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local row = Row.New(self, spec)
+    local pill, label = Gui.Badge(row.Right, spec.Status or spec.Default or "Ready", spec.Color or "Good", true)
+    row:AddRight(pill.Frame, pill.Width)
+    local status = setmetatable({
+        Type = "Status",
+        Row = row,
+        Item = row.Item,
+        Badge = pill,
+        Label = label,
+        Value = spec.Status or spec.Default or "Ready",
+        Container = self,
+    }, StatusWidget)
+    Widget.Register(status, idx, spec)
+    return status
+end
+
+function StatusWidget:SetValue(nextText, colorToken)
+    self.Value = nextText
+    self.Badge:SetText(nextText)
+    if colorToken then
+        self.Badge:SetColor(colorToken)
+    end
+end
+
+function Container:AddTable(idx, spec)
+    idx, spec = Widget.Normalize(idx, spec)
+    local headers = spec.Headers or spec.Columns or {}
+    local rows = spec.Rows or {}
+    local holder = Draw.Box("Frame", { Name = "Table" }, "Element", "Outline", 10, 2)
+    local inner = Container.New(holder, { PadX = 8, PadY = 6, GapY = 4 })
+    inner:SetParent(self)
+    local tbl = setmetatable({
+        Type = "Table",
+        Headers = headers,
+        Rows = rows,
+        Inner = inner,
+        Container = self,
+    }, TableWidget)
+    tbl.Item = self:Add(holder, {
+        Height = function()
+            return math.max(36, inner.ContentHeight)
+        end,
+        Child = inner,
+        Search = Row.SearchText(spec),
+    })
+    tbl:Rebuild()
+    return tbl
+end
+
+function TableWidget:Rebuild()
+    self.Inner:Clear()
+    local colCount = math.max(1, #self.Headers)
+    if #self.Headers > 0 then
+        local headRow = Draw.Box("Frame", { BackgroundTransparency = 0.35 }, "PanelHeader", nil, 6)
+        for colIdx, hText in ipairs(self.Headers) do
+            Draw.Text({
+                Position = UDim2.new((colIdx - 1) / colCount, 6, 0, 0),
+                Size = UDim2.new(1 / colCount, -8, 1, 0),
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                Parent = headRow,
+            }, "Strong", Util.TextSize("Desc"), "Accent", hText)
+        end
+        self.Inner:Add(headRow, { Height = 24 })
+    end
+    for _, cells in ipairs(self.Rows) do
+        local line = Draw.New("Frame", { BackgroundTransparency = 1 })
+        for colIdx = 1, colCount do
+            Draw.Text({
+                Position = UDim2.new((colIdx - 1) / colCount, 6, 0, 0),
+                Size = UDim2.new(1 / colCount, -8, 1, 0),
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                Parent = line,
+            }, "Body", Util.TextSize("Desc"), colIdx == 1 and "Text" or "SubText", tostring(cells[colIdx] or ""))
+        end
+        self.Inner:Add(line, { Height = 22 })
+    end
+    self.Container:MarkDirty()
+end
+
+function TableWidget:SetRows(nextRows)
+    self.Rows = nextRows or {}
+    self:Rebuild()
+end
+
+-- WindUI-style shorthand aliases on Container
+Container.Toggle = Container.AddToggle
+Container.Checkbox = Container.AddCheckbox
+Container.Slider = Container.AddSlider
+Container.Dropdown = Container.AddDropdown
+Container.Input = Container.AddInput
+Container.Button = Container.AddButton
+Container.Keybind = Container.AddKeybind
+Container.Colorpicker = Container.AddColorPicker
+Container.Label = Container.AddLabel
+Container.Paragraph = Container.AddParagraph
+Container.Divider = Container.AddDivider
+Container.Section = Container.AddSeparatorText
+Container.Stepper = Container.AddStepper
+Container.RangeSlider = Container.AddRangeSlider
+Container.Segmented = Container.AddSegmented
+Container.Stat = Container.AddStat
+Container.Status = Container.AddStatus
+Container.Table = Container.AddTable
+
+
+--@return card, face, scale Floating block card with drop shadow
 function Popup.Card(width, height)
     local shadow = Config.Group.Shadow
     local card = Draw.New("Frame", { Name = "Popup", BackgroundTransparency = 1, Size = UDim2.fromOffset(width + shadow, height + shadow), ZIndex = 2 })
@@ -2793,21 +5191,44 @@ function Popup.Open(card, scale, anchor, onClose)
     State.Overlay.Visible = true
     Popup.Place(card, anchor)
     scale.Scale = State.UserScale * 0.88
-    Anim.Tween(scale, { Scale = State.UserScale }, Config.Tween.Pop, "Back")
-    State.Popup = { Card = card, Scale = scale, OnClose = onClose }
+    Motion.Spring(scale, "Scale", State.UserScale, "Fast", { Damping = 0.62 })
+    local lastPos = anchor and anchor.AbsolutePosition or Vector2.zero
+    local tracker
+    if anchor then
+        tracker = Util.Connect(RunService.RenderStepped, function()
+            if not State.Popup or State.Popup.Card ~= card then
+                return
+            end
+            if not anchor.Parent or (State.Window and (not State.Window.Visible or State.Window.Minimized)) then
+                Popup.Close()
+                return
+            end
+            local curPos = anchor.AbsolutePosition
+            if (curPos - lastPos).Magnitude > 0.5 then
+                lastPos = curPos
+                Popup.Place(card, anchor)
+            end
+        end)
+    end
+    State.Popup = { Card = card, Scale = scale, Anchor = anchor, Tracker = tracker, OnClose = onClose }
 end
 
 function Popup.Place(card, anchor)
+    if not anchor or not State.Gui then
+        return
+    end
     local viewport = State.Gui.AbsoluteSize
-    local width, height = card.Size.X.Offset * State.UserScale, card.Size.Y.Offset * State.UserScale
-    -- AbsolutePosition นับจากใต้แถบ inset ของ Roblox แต่ overlay นับจากขอบจอ ต้องชดเชย
-    local origin, size = anchor.AbsolutePosition - State.Gui.AbsolutePosition, anchor.AbsoluteSize
+    local scaleFactor = math.max(0.5, State.UserScale or 1)
+    local width = card.Size.X.Offset * scaleFactor
+    local height = card.Size.Y.Offset * scaleFactor
+    local origin = anchor.AbsolutePosition - State.Gui.AbsolutePosition
+    local size = anchor.AbsoluteSize
     local x = math.clamp(origin.X, 8, math.max(8, viewport.X - width - 8))
     local y = origin.Y + size.Y + 6
     if y + height > viewport.Y - 8 then
         y = math.max(8, origin.Y - height - 6)
     end
-    card.Position = UDim2.fromOffset(x, y)
+    card.Position = UDim2.fromOffset(math.floor(x + 0.5), math.floor(y + 0.5))
 end
 
 function Popup.Close()
@@ -2816,9 +5237,14 @@ function Popup.Close()
         return
     end
     State.Popup = nil
+    if popup.Tracker then
+        popup.Tracker:Disconnect()
+        popup.Tracker = nil
+    end
     Util.Try(popup.OnClose)
     local shrink = Anim.Tween(popup.Scale, { Scale = State.UserScale * 0.9 }, 0.1, "In")
     shrink.Completed:Once(function()
+        Theme.UnbindTree(popup.Card)
         popup.Card:Destroy()
         if not State.Popup then
             State.Overlay.Visible = false
@@ -2828,7 +5254,7 @@ end
 
 function Popup.SearchBox(parent, width)
     local field = Draw.Box("Frame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(width, Util.Metric("Box")), Parent = parent }, "Element", "Outline", 8, 2)
-    local icon = Sprite.New(field, "boo", 12)
+    local icon = Icons.Vector(field, "search", 14, "SubText")
     icon.AnchorPoint = Vector2.new(0, 0.5)
     icon.Position = UDim2.new(0, 8, 0.5, 0)
     local box = Draw.Text({ ClassName = "TextBox", Text = "", ClearTextOnFocus = false, Position = UDim2.fromOffset(26, 0), Size = UDim2.new(1, -32, 1, 0), Parent = field }, "Body", Util.TextSize("Label"), "Text")
@@ -2837,12 +5263,15 @@ function Popup.SearchBox(parent, width)
     return box
 end
 
---@param options { Anchor, Values, Multi, Search, IsSelected(value), OnPick(value) -> ปิดไหม, OnClose }
+--@param options { Anchor, Values, Multi, Search, IsSelected(value), OnPick(value) -> shouldClose, OnClose }
 function Popup.List(options)
     local itemHeight = Util.Metric("Item")
     local searchHeight = options.Search and (Util.Metric("Box") + 6) or 0
     local minWidth = options.Images and Config.Dropdown.MinWidth + itemHeight + 60 or Config.Dropdown.MinWidth
-    local width = math.floor(math.max(minWidth, options.Anchor.AbsoluteSize.X / State.UserScale))
+    local viewportW = State.Gui and State.Gui.AbsoluteSize.X or 800
+    local maxAllowedW = math.max(160, math.floor((viewportW - 24) / math.max(0.5, State.UserScale or 1)))
+    local rawAnchorW = options.Anchor.AbsoluteSize.X / math.max(0.5, State.UserScale or 1)
+    local width = math.clamp(math.floor(math.max(minWidth, rawAnchorW)), 140, maxAllowedW)
     local listHeight = math.max(1, math.min(#options.Values, Config.Dropdown.MaxVisible)) * (itemHeight + 2) + 6
     local card, face, scale = Popup.Card(width, listHeight + searchHeight + 12)
     local scroll = Layout.ScrollFrame({ Position = UDim2.fromOffset(6, 6 + searchHeight), Size = UDim2.new(1, -12, 0, listHeight), Parent = face })
@@ -2858,7 +5287,8 @@ function Popup.List(options)
         list:Clear()
         table.clear(entries)
         for _, value in ipairs(values) do
-            local parts = Selectable.Build(tostring(value), {
+            local labelText = Dropdown.FormatValue(value)
+            local parts = Selectable.Build(value, {
                 Multi = options.Multi,
                 Image = options.Images and options.Images[value],
                 Tint = options.Colors and options.Colors[value],
@@ -2872,7 +5302,7 @@ function Popup.List(options)
                 end
             end)
             entries[value] = parts
-            list:Add(parts.Button, { Height = itemHeight, Search = tostring(value):lower() })
+            list:Add(parts.Button, { Height = itemHeight, Search = labelText:lower() })
         end
         if #values == 0 then
             list:AddLabel(Lang.Strings.NoResults)
@@ -2882,15 +5312,25 @@ function Popup.List(options)
         local box = Popup.SearchBox(face, width - 12)
         box:GetPropertyChangedSignal("Text"):Connect(function()
             local query = box.Text:lower()
-            for _, item in ipairs(list.Items) do
-                item.Filtered = query ~= "" and item.Search ~= nil and not item.Search:find(query, 1, true)
+            local changed = false
+            for _, entry in ipairs(list.Items) do
+                local filtered = query ~= "" and entry.Search ~= nil and not entry.Search:find(query, 1, true)
+                if entry.Filtered ~= filtered then
+                    entry.Filtered = filtered
+                    changed = true
+                end
             end
-            list:MarkDirty()
+            if changed then
+                list:MarkDirty()
+            end
         end)
     end
     Build(options.Values)
     Layout.Flush()
-    Popup.Open(card, scale, options.Anchor, options.OnClose)
+    Popup.Open(card, scale, options.Anchor, function()
+        list:Destroy()
+        Util.Try(options.OnClose)
+    end)
     return { Rebuild = Build }
 end
 
@@ -2976,7 +5416,7 @@ function KeyPicker.New(row, idx, info, linked)
     return picker
 end
 
--- มือถือไม่มีคลิกขวา: กดค้างที่ปุ่มคีย์เพื่อเลือกโหมดแทน
+-- Long-press fallback on touch devices to open keybind mode menu
 function KeyPicker:BindLongPress()
     self.Button.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.Touch then
@@ -3074,7 +5514,7 @@ function KeyPicker:Deserialize(saved)
     self:SetValue(saved)
 end
 
--- เปลี่ยนโหมดแล้วล้างสถานะค้าง และให้ toggle ที่ผูกไว้ตรงกับโหมดใหม่
+-- Reset active state on mode change and sync linked toggle
 function KeyPicker:SetMode(mode)
     self.Mode = mode
     self.Held, self.Toggled = false, false
@@ -3270,6 +5710,143 @@ function ColorPicker:Open()
     end)
 end
 
+function Dialog.Close()
+    local cur = Dialog.Current
+    if not cur then
+        return
+    end
+    Dialog.Current = nil
+    if cur.Container then
+        cur.Container:Destroy()
+    end
+    local shrink = Anim.Tween(cur.Scale, { Scale = State.UserScale * 0.9 }, 0.14, "In")
+    Anim.Tween(cur.Backdrop, { BackgroundTransparency = 1 }, 0.14)
+    shrink.Completed:Once(function()
+        Theme.UnbindTree(cur.Backdrop)
+        cur.Backdrop:Destroy()
+    end)
+end
+
+function Dialog.Show(spec)
+    spec = spec or {}
+    Dialog.Close()
+    if not State.Gui then
+        return nil
+    end
+    local backdrop = Draw.New("TextButton", {
+        Name = "DialogBackdrop",
+        Text = "",
+        AutoButtonColor = false,
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = Config.Layer.Modal,
+        Parent = State.Gui,
+    })
+    Anim.Tween(backdrop, { BackgroundTransparency = 0.45 }, Config.Tween.Fast)
+    local viewportW = State.Gui.AbsoluteSize.X
+    local modalW = math.clamp(spec.Width or 340, 260, math.max(260, math.floor(viewportW / math.max(0.5, State.UserScale or 1) - 32)))
+    local card, face, scale = Popup.Card(modalW, 160)
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.5)
+    card.Parent = backdrop
+    scale.Scale = State.UserScale * 0.86
+    Motion.Spring(scale, "Scale", State.UserScale, "Fast", { Damping = 0.62 })
+    local body = Container.New(face, { PadX = 14, PadY = 14, GapY = 8 })
+    body:SetWidth(modalW)
+    body.OnHeight = function(h)
+        local shadow = Config.Group.Shadow
+        card.Size = UDim2.fromOffset(modalW + shadow, math.max(120, h) + shadow)
+    end
+    body:AddParagraph({ Title = spec.Title or "Confirm", Content = spec.Content or spec.Description or "", Icon = spec.Icon })
+    local buttons = spec.Buttons or {
+        { Title = spec.CancelText or "Cancel", Style = "Default" },
+        { Title = spec.ConfirmText or "Confirm", Style = spec.Style or "Primary", Callback = spec.Callback or spec.OnConfirm },
+    }
+    local firstBtn
+    for index, btnSpec in ipairs(buttons) do
+        local rawStyle = btnSpec.Style or btnSpec.Variant
+        if rawStyle == "Secondary" then
+            rawStyle = "Default"
+        end
+        local action = function()
+            Dialog.Close()
+            Util.Try(btnSpec.Callback or btnSpec.Func)
+        end
+        if not firstBtn then
+            firstBtn = body:AddButton({ Text = btnSpec.Title or btnSpec.Text or "OK", Style = rawStyle or (index == #buttons and "Primary" or "Default"), Icon = btnSpec.Icon }, action)
+        else
+            firstBtn:AddButton({ Text = btnSpec.Title or btnSpec.Text or "OK", Style = rawStyle or (index == #buttons and "Primary" or "Default"), Icon = btnSpec.Icon }, action)
+        end
+    end
+    Layout.Flush()
+    Dialog.Current = { Backdrop = backdrop, Card = card, Scale = scale, Container = body }
+    return Dialog.Current
+end
+
+function Sheet.Close()
+    local cur = Sheet.Current
+    if not cur then
+        return
+    end
+    Sheet.Current = nil
+    if cur.Container then
+        cur.Container:Destroy()
+    end
+    Anim.Tween(cur.Backdrop, { BackgroundTransparency = 1 }, 0.18)
+    local slide = Anim.Tween(cur.Panel, { Position = UDim2.new(1, 20, 0, 8) }, 0.2, "In")
+    slide.Completed:Once(function()
+        Theme.UnbindTree(cur.Backdrop)
+        cur.Backdrop:Destroy()
+    end)
+end
+
+function Sheet.Show(spec)
+    spec = spec or {}
+    Sheet.Close()
+    if not State.Gui then
+        return nil
+    end
+    local backdrop = Draw.New("TextButton", {
+        Name = "SheetBackdrop",
+        Text = "",
+        AutoButtonColor = false,
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 1,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = Config.Layer.Modal,
+        Parent = State.Gui,
+    })
+    backdrop.Activated:Connect(Sheet.Close)
+    Anim.Tween(backdrop, { BackgroundTransparency = 0.45 }, Config.Tween.Fast)
+    local sheetW = math.min(spec.Width or 320, math.max(240, State.Gui.AbsoluteSize.X - 40))
+    local panel = Draw.Box("TextButton", {
+        Name = "SheetPanel",
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, sheetW + 20, 0, 8),
+        Size = UDim2.new(0, sheetW, 1, -16),
+        Parent = backdrop,
+    }, "Panel", "Outline", 12, 3)
+    Motion.Spring(panel, "Position", UDim2.new(1, -8, 0, 8), "Normal", { Damping = 0.72 })
+    local header = Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, 42), Parent = panel }, "PanelHeader", nil, 12)
+    Draw.Box("Frame", { Position = UDim2.new(0, 0, 1, -12), Size = UDim2.new(1, 0, 0, 12), Parent = header }, "PanelHeader")
+    Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), ZIndex = 2, Parent = header }, "Outline")
+    Draw.Text({ Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -50, 1, -2), Parent = header }, "Body", Util.TextSize("Group"), "Text", spec.Title or "Details")
+    local closeBtn = Draw.Box("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, -1), Size = UDim2.fromOffset(26, 26), ZIndex = 3, Parent = header }, "Element", "Outline", 6, 2)
+    Icons.Vector(closeBtn, "close", 14, "Text").Position = UDim2.fromOffset(6, 6)
+    closeBtn.Activated:Connect(Sheet.Close)
+    local scroll = Layout.ScrollFrame({ Position = UDim2.fromOffset(4, 46), Size = UDim2.new(1, -8, 1, -52), Parent = panel })
+    local body = Container.New(scroll, { PadX = 10, PadY = 10, GapY = 8 })
+    body:SetWidth(sheetW - 8 - Config.Page.ScrollBar)
+    local builder = spec.Build or spec.Render
+    if type(builder) == "function" then
+        Util.Try(builder, body)
+    end
+    Layout.Flush()
+    Sheet.Current = { Backdrop = backdrop, Panel = panel, Container = body, Close = Sheet.Close }
+    return body
+end
+
 
 function Gui.ClearPrevious(parent)
     local env = type(getgenv) == "function" and getgenv() or nil
@@ -3311,7 +5888,6 @@ function Gui.Setup()
     Util.Connect(UserInputService.InputChanged, Gui.OnInputChanged)
     Util.Connect(UserInputService.InputEnded, Gui.OnInputEnded)
     Util.Connect(RunService.Heartbeat, Gui.OnHeartbeat)
-    Util.Connect(RunService.RenderStepped, Layout.Flush)
     Util.Every(20, Theme.Prune)
 end
 
@@ -3330,7 +5906,7 @@ function Gui.OnInputBegan(input, processed)
     if name == State.MenuKey and State.Window and not processed then
         State.Window:Toggle()
     end
-    -- เกมมักผูกปุ่มเดียวกันไว้ (เช่น E = Use) แล้ว processed เป็น true เสมอ ปุ่มลัดฟีเจอร์ต้องยังทำงาน
+    -- Allow feature keybinds even when game binds the same key (processed = true)
     if input.UserInputType == Enum.UserInputType.Keyboard or not processed then
         Keybinds.Dispatch(name, true)
     end
@@ -3374,7 +5950,7 @@ function Gui.OnHeartbeat(deltaTime)
     end
 end
 
---@param handle ส่วนที่จับลาก, move(delta) เรียกทุกครั้งที่ลาก, exclude ปุ่มที่กดแล้วไม่ต้องลาก
+--@param handle Drag target, move(delta) drag callback, exclude ignored child button
 function Gui.Draggable(handle, move, exclude)
     handle.InputBegan:Connect(function(input)
         if not Util.IsPointer(input) then
@@ -3486,24 +6062,25 @@ function Window:BuildTopbar()
             return self.Root.Position
         end
         self.Root.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
+        self:ClampPosition()
         return begin
     end, { right })
 end
 
--- ของตกแต่ง topbar ตามธีม: เมฆลอยสำหรับธีมกลางวัน ดาว/ถ่านไฟกะพริบสำหรับธีมกลางคืน
+-- Theme topbar decor: drifting clouds for day themes, twinkling stars/embers for night themes
 function Window:BuildDecor(topbar)
     self.Clouds, self.Stars = {}, {}
     for index, spot in ipairs({ { 0.44, 8, 42 }, { 0.6, 22, 30 } }) do
         local cloud = Draw.Cloud(topbar, spot[3])
         cloud.Position = UDim2.new(spot[1], 0, 0, spot[2])
         cloud.ZIndex = 2
-        Anim.Tween(cloud, { Position = UDim2.new(spot[1], 14, 0, spot[2] + 2) }, 4 + index, "Sine", -1, true)
+        Anim.Loop("DecorClouds", cloud, { Position = UDim2.new(spot[1], 14, 0, spot[2] + 2) }, 4 + index, "Sine", true)
         table.insert(self.Clouds, cloud)
     end
     for index, spot in ipairs({ { 0.42, 10, 12 }, { 0.48, 30, 9 }, { 0.54, 14, 14 }, { 0.6, 32, 10 }, { 0.66, 8, 11 }, { 0.71, 26, 8 } }) do
         local star = Draw.Text({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(spot[1], 0, 0, spot[2]), Size = UDim2.fromOffset(spot[3] + 4, spot[3] + 4), TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 2, Parent = topbar }, "Glyph", spot[3], "DecorColor")
         star.TextTransparency = 0.15
-        Anim.Tween(star, { TextTransparency = 0.8 }, 0.9 + index * 0.37, "Sine", -1, true)
+        Anim.Loop("DecorStars", star, { TextTransparency = 0.8 }, 0.9 + index * 0.37, "Sine", true)
         table.insert(self.Stars, star)
     end
     self.Spooky = {}
@@ -3513,7 +6090,7 @@ function Window:BuildDecor(topbar)
         item.Position = UDim2.new(spot[1], 0, 0, spot[2])
         item.ZIndex = 2
         local swing = spot[4] == "bat" and 14 or 6
-        Anim.Tween(item, { Position = UDim2.new(spot[1], 0, 0, spot[2] + (spot[4] == "bat" and 6 or 3)), Rotation = index % 2 == 0 and swing or -swing }, 1.2 + index * 0.35, "Sine", -1, true)
+        Anim.Loop("DecorSpooky", item, { Position = UDim2.new(spot[1], 0, 0, spot[2] + (spot[4] == "bat" and 6 or 3)), Rotation = index % 2 == 0 and swing or -swing }, 1.2 + index * 0.35, "Sine", true)
         table.insert(self.Spooky, item)
     end
     self:BuildSpookyBody()
@@ -3522,7 +6099,7 @@ function Window:BuildDecor(topbar)
     end)
 end
 
--- ของ Halloween นอก topbar: ขอบเรืองส้ม หมอกม่วงด้านล่าง แมงมุมห้อยใย
+-- Halloween window accents: orange glow border, purple bottom fog, hanging spider
 function Window:BuildSpookyBody()
     self.SpookyBody = {}
     local shadow, radius = Config.Window.Shadow, Config.Window.Radius
@@ -3532,41 +6109,64 @@ function Window:BuildSpookyBody()
     Theme.OnRender(glowStroke, function()
         glowStroke.Color = Theme.Colors.Glow or Theme.Colors.Accent
     end)
-    Anim.Tween(glowStroke, { Transparency = 0.75, Thickness = 2 }, 1.8, "Sine", -1, true)
+    Anim.Loop("DecorSpookyGlow", glowStroke, { Transparency = 0.75, Thickness = 2 }, 1.8, "Sine", true)
+    self.SpookyGlow = glow
     table.insert(self.SpookyBody, glow)
 
     local fog = Draw.New("Frame", { Name = "Fog", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 70), BorderSizePixel = 0, ZIndex = 1, Parent = self.Body })
+    Draw.Corner(fog, radius)
     local fogShape = Draw.New("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.72) }), Parent = fog })
     Theme.OnRender(fog, function()
         fog.BackgroundColor3 = Theme.Colors.Fog or Theme.Colors.Accent
     end)
-    Anim.Tween(fogShape, { Offset = Vector2.new(0, 0.12) }, 3.2, "Sine", -1, true)
+    Anim.Loop("DecorSpookyBody", fogShape, { Offset = Vector2.new(0, 0.12) }, 3.2, "Sine", true)
+    self.SpookyFog = fog
     table.insert(self.SpookyBody, fog)
 
     local hanger = Draw.New("Frame", { Name = "Spider", BackgroundTransparency = 1, Position = UDim2.new(1, -16, 0, Config.Window.Topbar + 60), Size = UDim2.fromOffset(16, 16), ZIndex = 9, Parent = self.Body })
     Draw.New("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, 4), Size = UDim2.new(0, 1, 0, 300), BackgroundColor3 = Color3.fromRGB(200, 186, 222), BackgroundTransparency = 0.5, Parent = hanger })
     local spider = Sprite.New(hanger, "spider", 16)
-    Anim.Tween(hanger, { Position = UDim2.new(1, -16, 0, Config.Window.Topbar + 150) }, 3.4, "Sine", -1, true)
-    Anim.Tween(spider, { Rotation = 10 }, 0.9, "Sine", -1, true)
+    Anim.Loop("DecorSpookyBody", hanger, { Position = UDim2.new(1, -16, 0, Config.Window.Topbar + 150) }, 3.4, "Sine", true)
+    Anim.Loop("DecorSpookyBody", spider, { Rotation = 10 }, 0.9, "Sine", true)
+    self.SpookySpider = hanger
     table.insert(self.SpookyBody, hanger)
 end
 
 function Window:RenderDecor()
     local wide = self.Size and self.Size.X >= 700
     local decor = Theme.Colors.Decor
+    local shown = self.Visible ~= false
+    local expanded = shown and not self.Minimized
+    local showClouds = shown and wide and decor == "Clouds"
+    local showStars = shown and wide and decor == "Stars"
+    local showSpooky = shown and wide and decor == "Halloween"
+    local showGlow = shown and decor == "Halloween"
+    local showSpookyBody = expanded and decor == "Halloween"
     for _, cloud in ipairs(self.Clouds) do
-        cloud.Visible = wide and decor == "Clouds"
+        cloud.Visible = showClouds
     end
     for _, star in ipairs(self.Stars) do
         star.Text = Theme.Colors.DecorGlyph or "✦"
-        star.Visible = wide and decor == "Stars"
+        star.Visible = showStars
     end
     for _, item in ipairs(self.Spooky or {}) do
-        item.Visible = decor == "Halloween" and wide
+        item.Visible = showSpooky
     end
-    for _, item in ipairs(self.SpookyBody or {}) do
-        item.Visible = decor == "Halloween"
+    if self.SpookyGlow then
+        self.SpookyGlow.Visible = showGlow
     end
+    if self.SpookyFog then
+        self.SpookyFog.Visible = showSpookyBody
+    end
+    if self.SpookySpider then
+        self.SpookySpider.Visible = showSpookyBody
+    end
+    Anim.SetGroupActive("Emblem", shown)
+    Anim.SetGroupActive("DecorClouds", showClouds)
+    Anim.SetGroupActive("DecorStars", showStars)
+    Anim.SetGroupActive("DecorSpooky", showSpooky)
+    Anim.SetGroupActive("DecorSpookyGlow", showGlow)
+    Anim.SetGroupActive("DecorSpookyBody", showSpookyBody)
 end
 
 function Window:BuildTitle(parent)
@@ -3625,7 +6225,7 @@ function Window:BuildLanguagePill(parent)
     Render()
 end
 
--- วาดไอคอนด้วยเส้น frame เพราะ glyph ✕ ของฟอนต์ในเกมแสดงผลไม่เหมือนกันทุกเครื่อง
+-- Draw close icon with Frame lines for consistent cross-device rendering
 function Window:BuildTopButton(parent, kind, face, shade, ink, callback)
     local size = State.Touch and 36 or 30
     local holder, top = Draw.Block(parent, face, shade, 8, 3)
@@ -3685,18 +6285,31 @@ function Window:BuildMain()
     self.HeaderTitle = Draw.Text({ Position = UDim2.fromOffset(16, 10), Size = UDim2.new(1, -230, 0, 26), TextTruncate = Enum.TextTruncate.AtEnd, Parent = main }, "Display", Config.Text.Header, "Text")
     self.HeaderDesc = Draw.Text({ Position = UDim2.fromOffset(16, 36), Size = UDim2.new(1, -230, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd, Parent = main }, "Desc", Util.TextSize("Desc") + 1, "SubText")
     local field = Draw.Box("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -16, 0, header / 2), Size = UDim2.fromOffset(200, Util.Metric("Box")), Parent = main }, "Element", "Outline", UDim.new(1, 0), 2)
-    local icon = Sprite.New(field, "boo", 12)
+    local icon = Icons.Vector(field, "search", 14, "SubText")
     icon.AnchorPoint = Vector2.new(0, 0.5)
     icon.Position = UDim2.new(0, 10, 0.5, 0)
-    self.Search = Draw.Text({ ClassName = "TextBox", Text = "", ClearTextOnFocus = false, Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -36, 1, 0), Parent = field }, "Body", Util.TextSize("Label"), "Text")
+    local clearBtn = Draw.Box("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0), Size = UDim2.fromOffset(18, 18), Visible = false, Parent = field }, "Hover", nil, UDim.new(1, 0))
+    Icons.Vector(clearBtn, "close", 10, "SubText").Position = UDim2.fromOffset(4, 4)
+    self.SearchClear = clearBtn
+    self.Search = Draw.Text({ ClassName = "TextBox", Text = "", ClearTextOnFocus = false, Position = UDim2.fromOffset(28, 0), Size = UDim2.new(1, -52, 1, 0), Parent = field }, "Body", Util.TextSize("Label"), "Text")
     Lang.Bind(self.Search, Lang.Strings.Search, "PlaceholderText")
     Theme.Bind(self.Search, { PlaceholderColor3 = "Muted" })
     self.SearchField = field
+    clearBtn.Activated:Connect(function()
+        self.Search.Text = ""
+    end)
     self.Search:GetPropertyChangedSignal("Text"):Connect(function()
         self.Query = self.Search.Text:lower()
+        clearBtn.Visible = self.Query ~= ""
         self:ApplyFilter()
     end)
     self.PageHost = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, header), Size = UDim2.new(1, 0, 1, -header), ClipsDescendants = true, ZIndex = 2, Parent = main })
+    local emptyBox = Draw.Box("Frame", { Name = "EmptySearch", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromOffset(200, 74), Visible = false, ZIndex = 5, Parent = self.PageHost }, "Panel", "Outline", 10, 2)
+    local booSprite = Sprite.New(emptyBox, "boo", 24)
+    booSprite.AnchorPoint = Vector2.new(0.5, 0)
+    booSprite.Position = UDim2.new(0.5, 0, 0, 10)
+    Draw.Text({ Position = UDim2.fromOffset(8, 40), Size = UDim2.new(1, -16, 0, 24), TextXAlignment = Enum.TextXAlignment.Center, Parent = emptyBox }, "Body", Util.TextSize("Label"), "Muted", Lang.Strings.NoResults)
+    self.EmptyState = emptyBox
     Particles.Build(main)
 end
 
@@ -3704,15 +6317,18 @@ function Window:BuildGround()
     local height, radius = Config.Window.Ground, Config.Window.Radius
     local ground = Draw.Box("Frame", { Name = "Ground", AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, height), ClipsDescendants = true, ZIndex = 3, Parent = self.Body }, "Brick", nil, radius)
     Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, radius), Parent = ground }, "Brick")
-    local bricks = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -6), Parent = ground })
+    local bricks = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 1, -8), ClipsDescendants = true, Parent = ground })
     Draw.Bricks(bricks, 28, "BrickDark")
     Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, 6), Parent = ground }, "Grass")
     Draw.Box("Frame", { Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, 2), Parent = ground }, "GrassDark")
     Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, 3), Parent = ground }, "Outline")
     self.Ground = ground
     local gripSize = State.Touch and 34 or 24
-    local grip = Draw.Text({ Text = "◢", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -4, 1, 0), Size = UDim2.fromOffset(gripSize, gripSize), TextXAlignment = Enum.TextXAlignment.Right, TextYAlignment = Enum.TextYAlignment.Bottom, ClassName = "TextButton", AutoButtonColor = false, ZIndex = 4, Parent = ground }, "Glyph", 16, "White")
-    Draw.Padding(grip, 0, 4, 2, 0)
+    local grip = Draw.New("TextButton", { Name = "Grip", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -2, 1, -2), Size = UDim2.fromOffset(gripSize, gripSize), ZIndex = 4, Parent = ground })
+    local gripIcon = Icons.Vector(grip, "grip", 14, "White")
+    gripIcon.AnchorPoint = Vector2.new(1, 1)
+    gripIcon.Position = UDim2.new(1, -2, 1, -2)
+    self.Grip = grip
     Gui.Draggable(grip, function(begin, delta)
         if not delta then
             return { Size = self.Size, Position = self.Root.Position }
@@ -3722,7 +6338,6 @@ function Window:BuildGround()
     end)
 end
 
--- ขยายจากมุมขวาล่าง: root ยึดกึ่งกลางด้านบน จึงต้องเลื่อนตามครึ่งหนึ่งของความกว้างที่เพิ่ม เพื่อให้ขอบซ้ายอยู่กับที่
 function Window:ResizeFrom(begin, delta)
     if self.Minimized then
         return
@@ -3731,6 +6346,7 @@ function Window:ResizeFrom(begin, delta)
     self:FitViewport()
     local grown = (self.Size.X - begin.Size.X) * State.UserScale
     self.Root.Position = begin.Position + UDim2.fromOffset(math.floor(grown / 2), 0)
+    self:ClampPosition()
 end
 
 function Window:MinSize()
@@ -3740,20 +6356,48 @@ function Window:MinSize()
     return Config.Window.MinWidth, Config.Window.MinHeight
 end
 
+function Window:ClampPosition()
+    if not State.Gui or not self.Root then
+        return
+    end
+    local viewport = State.Gui.AbsoluteSize
+    if viewport.X <= 0 or viewport.Y <= 0 then
+        return
+    end
+    local scaleFactor = math.max(0.5, State.UserScale or 1)
+    local halfW = math.floor((self.Size.X * scaleFactor) / 2)
+    local topH = math.floor(Config.Window.Topbar * scaleFactor)
+    local pos = self.Root.Position
+    local absX = viewport.X * pos.X.Scale + pos.X.Offset
+    local absY = viewport.Y * pos.Y.Scale + pos.Y.Offset
+    local minX = math.min(halfW + 6, viewport.X / 2)
+    local maxX = math.max(minX, viewport.X - halfW - 6)
+    local clampedX = math.clamp(absX, minX, maxX)
+    local clampedY = math.clamp(absY, 6, math.max(6, viewport.Y - topH - 6))
+    self.Root.Position = UDim2.new(pos.X.Scale, math.floor(clampedX - viewport.X * pos.X.Scale + 0.5), pos.Y.Scale, math.floor(clampedY - viewport.Y * pos.Y.Scale + 0.5))
+end
+
 function Window:FitViewport()
     local viewport = State.Gui.AbsoluteSize
     if viewport.X <= 0 then
         return
     end
     local margin = (State.Touch and Config.Window.TouchMargin or Config.Window.Margin) * 2
-    local minWidth, minHeight = self:MinSize()
-    local maxWidth = math.max(minWidth, (viewport.X - margin) / State.UserScale)
-    local maxHeight = math.max(minHeight, (viewport.Y - margin) / State.UserScale)
+    local baseMinW, baseMinH = self:MinSize()
+    local scaleFactor = math.max(0.5, State.UserScale or 1)
+    local availW = math.max(260, (viewport.X - margin) / scaleFactor)
+    local availH = math.max(220, (viewport.Y - margin) / scaleFactor)
+    local minWidth = math.min(baseMinW, availW)
+    local minHeight = math.min(baseMinH, availH)
     self.Size = Vector2.new(
-        math.floor(math.clamp(self.Desired.X, minWidth, maxWidth)),
-        math.floor(math.clamp(self.Desired.Y, minHeight, maxHeight))
+        math.floor(math.clamp(self.Desired.X, minWidth, availW)),
+        math.floor(math.clamp(self.Desired.Y, minHeight, availH))
     )
     self:ApplyLayout()
+    self:ClampPosition()
+    if Float.Clamp then
+        Float.Clamp()
+    end
 end
 
 function Window:ApplyLayout()
@@ -3764,7 +6408,6 @@ function Window:ApplyLayout()
     local bodyHeight = height - Config.Window.Topbar - Config.Window.Ground
     self.Root.Size = UDim2.fromOffset(width + shadow, (self.Minimized and Config.Window.Topbar or height) + shadow)
     if not self.Placed then
-        -- ยึดขอบบนไว้ ตอนยุบหน้าต่างแถบจะอยู่ที่เดิม
         self.Placed = true
         self.Root.Position = UDim2.new(0.5, 0, 0.5, -math.floor((height + shadow) * State.UserScale / 2))
     end
@@ -3788,7 +6431,7 @@ function Window:ApplyLayout()
     self:ApplyChrome(width, height)
 end
 
--- จอเตี้ย (มือถือแนวนอน): ซ่อนการ์ดผู้เล่นกับคำอธิบายหัวแท็บ เพื่อคืนพื้นที่ให้เนื้อหา
+-- Compact landscape mode: hide user card and tab subtitle to maximize content height
 function Window:ApplyShort(height)
     local short = height < 430
     local header = short and 46 or Config.Window.Header
@@ -3829,6 +6472,11 @@ function Window:AddTabSection(text)
 end
 
 function Window:AddTab(name, icon, description)
+    if type(name) == "table" and not name.EN and not name.TH then
+        icon = name.Icon or icon
+        description = name.Description or name.Desc or description
+        name = name.Title or name.Name or name.Text or "Tab"
+    end
     local tab = Tab.New(self, name, icon, description)
     table.insert(self.Tabs, tab)
     self:ApplyLayout()
@@ -3868,7 +6516,18 @@ function Window:SelectTab(tab)
     local titleY = self.HeaderDesc.Visible and 10 or 11
     self.HeaderTitle.Position = UDim2.fromOffset(28, titleY)
     Anim.Tween(self.HeaderTitle, { Position = UDim2.fromOffset(16, titleY) }, Config.Tween.Slide, "Back")
-    self:ApplyFilter()
+    if (tab.FilteredQuery or "") ~= self.Query then
+        self:ApplyFilter()
+    elseif self.EmptyState then
+        self.EmptyState.Visible = false
+    end
+    local cards = {}
+    for _, box in ipairs(tab.Groupboxes) do
+        if not box.Item.Filtered and not box.Item.Hidden then
+            table.insert(cards, box.Card)
+        end
+    end
+    Fx.StaggerRise(cards)
 end
 
 function Window:ApplyFilter()
@@ -3877,16 +6536,40 @@ function Window:ApplyFilter()
         return
     end
     local query = self.Query
+    tab.FilteredQuery = query
+    local visibleCount = 0
+    local columnChanged = false
     for _, box in ipairs(tab.Groupboxes) do
         local titleMatch = query == "" or box.SearchTitle:find(query, 1, true) ~= nil
         local anyMatch = false
-        for _, item in ipairs(box.Items) do
-            item.Filtered = not titleMatch and (item.Search == nil or not item.Search:find(query, 1, true))
-            anyMatch = anyMatch or (item.Search ~= nil and not item.Filtered)
+        local boxChanged = false
+        for _, entry in ipairs(box.Items) do
+            local filtered = not titleMatch and (entry.Search == nil or not entry.Search:find(query, 1, true))
+            if entry.Filtered ~= filtered then
+                entry.Filtered = filtered
+                boxChanged = true
+            end
+            anyMatch = anyMatch or (entry.Search ~= nil and not filtered)
         end
-        box.Item.Filtered = not titleMatch and not anyMatch
-        box:MarkDirty()
-        box.Column:MarkDirty()
+        local boxFiltered = not titleMatch and not anyMatch
+        if box.Item.Filtered ~= boxFiltered then
+            box.Item.Filtered = boxFiltered
+            columnChanged = true
+        end
+        if not boxFiltered and not box.Item.Hidden then
+            visibleCount += 1
+        end
+        if boxChanged then
+            box:MarkDirty()
+            box.Column:MarkDirty()
+            columnChanged = true
+        end
+    end
+    if columnChanged then
+        tab:ApplyColumns()
+    end
+    if self.EmptyState then
+        self.EmptyState.Visible = query ~= "" and visibleCount == 0
     end
 end
 
@@ -3896,9 +6579,14 @@ function Window:SetVisible(visible)
     end
     self.Visible = visible
     Popup.Close()
+    if not visible then
+        Dialog.Close()
+        Sheet.Close()
+    end
     Tooltip.Token = nil
     Tooltip.Frame.Visible = false
     Float.Render()
+    self:RenderDecor()
     if visible then
         self.Root.Visible = true
         self.PopScale.Scale = 0.82
@@ -3929,18 +6617,22 @@ function Window:SetContentVisible(visible)
     self.Sidebar.Visible, self.Main.Visible, self.Ground.Visible = visible, visible, visible
 end
 
--- พับแบบม้วนเก็บ: Body ตัดขอบเนื้อหาตามความสูงที่ tween อยู่ พื้นอิฐเลื่อนขึ้นไปสอดใต้แถบหัว
--- เนื้อหาถูกซ่อนจริงหลังพับเสร็จเท่านั้น (ไม่ให้ปุ่มที่มองไม่เห็นยังกดได้)
 function Window:SetMinimized(minimized)
+    minimized = minimized == true
     if self.Minimized == minimized then
         return
     end
     self.Minimized = minimized
     Popup.Close()
+    Dialog.Close()
+    Sheet.Close()
+    self:RenderDecor()
     if not minimized then
         self:SetContentVisible(true)
         self.TopbarFill.Visible, self.TopbarLine.Visible = true, true
     end
+    Anim.Tween(self.TopbarFill, { BackgroundTransparency = minimized and 1 or 0 }, Config.Tween.Fast)
+    Anim.Tween(self.TopbarLine, { BackgroundTransparency = minimized and 1 or 0 }, Config.Tween.Fast)
     Anim.Tween(self.ExpandBar, { Size = UDim2.new(0, 3, minimized and 0.5 or 0, 0) }, Config.Tween.Normal, "Back")
     local shadow = Config.Window.Shadow
     local height = minimized and Config.Window.Topbar or self.Size.Y
@@ -3964,7 +6656,8 @@ function Window:SetScale(scale)
 end
 
 function Tab.New(window, name, icon, description)
-    local tab = setmetatable({ Window = window, Name = name, Icon = icon, Description = description, Groupboxes = {} }, Tab)
+    local resolvedIcon = (icon and icon ~= "") and icon or Icons.FromTitle(name, "qblock")
+    local tab = setmetatable({ Window = window, Name = name, Icon = resolvedIcon, Description = description, Groupboxes = {} }, Tab)
     tab:BuildButton()
     tab:BuildPage()
     return tab
@@ -3978,7 +6671,7 @@ function Tab:BuildButton()
     local stroke = Draw.Stroke(face, "Outline", 2, true)
     stroke.Transparency = 1
     self.IconSlot = Draw.New("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.fromOffset(24, 24), Parent = face })
-    Sprite.New(self.IconSlot, self.Icon, 24)
+    Icons.Create(self.IconSlot, self.Icon, 24, nil, self.Name)
     self.Label = Draw.Text({ Position = UDim2.fromOffset(40, 0), Size = UDim2.new(1, -44, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd, Parent = face }, "Body", Util.TextSize("Label") + 1, "SidebarText", self.Name)
     self.Button, self.Face, self.Shade, self.Stroke = holder, face, shade, stroke
     holder.MouseEnter:Connect(function()
@@ -4011,7 +6704,11 @@ function Tab:RenderButton(instant)
     Theme.Bind(self.Label, { TextColor3 = active and "TabActiveText" or "SidebarText" })
 end
 
--- แท็บที่ซ่อนอยู่จะคำนวณ layout ตอนถูกเปิด ไม่เสียแรงตอนลากขยายหน้าต่าง
+function Tab:Select()
+    self.Window:SelectTab(self)
+end
+
+-- Defer layout calculation for inactive tabs until selected
 function Tab:ApplyWidth()
     local width = self.PendingWidth
     if not width then
@@ -4046,9 +6743,19 @@ function Tab:BuildPage()
     end, Child = self.Right })
 end
 
+function Tab.ColumnHasVisible(column)
+    for _, entry in ipairs(column.Items) do
+        if not entry.Hidden and not entry.Filtered then
+            return true
+        end
+    end
+    return false
+end
+
 function Tab:ApplyColumns(pageWidth)
     self.PageWidth = pageWidth or self.PageWidth or 0
-    local hasLeft, hasRight = #self.Left.Items > 0, #self.Right.Items > 0
+    local hasLeft = Tab.ColumnHasVisible(self.Left)
+    local hasRight = Tab.ColumnHasVisible(self.Right)
     local single = self.PageWidth < Config.Window.TwoColumnMin or not hasLeft or not hasRight
     self.LeftItem.Hidden = not hasLeft
     self.RightItem.Hidden = not hasRight
@@ -4057,21 +6764,24 @@ function Tab:ApplyColumns(pageWidth)
     self.Root:MarkDirty()
 end
 
---@param info ชื่อกลุ่ม หรือ { Name, Side = "Left"|"Right", Icon, Collapsed }
 function Tab:AddGroupbox(info, side)
     if type(info) ~= "table" or info.EN then
         info = { Name = info, Side = side }
+    else
+        info.Name = info.Name or info.Title or info.Text or ""
     end
     local column = info.Side == "Right" and self.Right or self.Left
     local shadow, header, radius = Config.Group.Shadow, Config.Group.Header, Config.Group.Radius
+    local collapsed = info.Collapsed == true
+    local initOpen = collapsed and 0 or 1
     local holder = Draw.New("Frame", { Name = "Groupbox", BackgroundTransparency = 1 })
     Draw.Box("Frame", { Position = UDim2.fromOffset(shadow, shadow), Size = UDim2.new(1, -shadow, 1, -shadow), Parent = holder }, "Shadow", nil, radius)
     local card = Draw.Box("Frame", { Size = UDim2.new(1, -shadow, 1, -shadow), Parent = holder }, "Panel", "Outline", radius, Config.Group.Stroke)
-    local body = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, header), Size = UDim2.new(1, 0, 1, -header), ClipsDescendants = true, Parent = card })
+    local body = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, header), Size = UDim2.new(1, 0, 1, -header), ClipsDescendants = true, Visible = not collapsed, Parent = card })
     local box = Container.New(body, { PadX = Config.Group.PadX, PadY = Config.Group.PadY, Window = self.Window, Tab = self })
     setmetatable(box, Groupbox)
-    box.Column, box.Card, box.SearchTitle = column, card, Lang.SearchText(info.Name)
-    box.Open = Draw.New("NumberValue", { Value = info.Collapsed and 0 or 1 })
+    box.Column, box.Card, box.Body, box.Collapsed, box.SearchTitle = column, card, body, collapsed, Lang.SearchText(info.Name)
+    box.Open = Draw.New("NumberValue", { Value = initOpen })
     box:BuildHeader(card, info)
     box.Item = column:Add(holder, {
         Height = function()
@@ -4080,7 +6790,17 @@ function Tab:AddGroupbox(info, side)
         Child = box,
         ChildInset = shadow,
     })
-    box.Open.Changed:Connect(function()
+    box.Open.Changed:Connect(function(v)
+        local show = v > 0.02
+        box.Body.Visible = show
+        if box.HeaderPatch then
+            box.HeaderPatch.Visible = show
+            box.HeaderPatch.BackgroundTransparency = math.clamp(1 - v * 1.4, 0, 1)
+        end
+        if box.HeaderDivider then
+            box.HeaderDivider.Visible = show
+            box.HeaderDivider.BackgroundTransparency = math.clamp(1 - v * 1.4, 0, 1)
+        end
         column:MarkDirty()
     end)
     table.insert(self.Groupboxes, box)
@@ -4096,18 +6816,41 @@ function Tab:AddRightGroupbox(name, icon, badge)
     return self:AddGroupbox({ Name = name, Side = "Right", Icon = icon, Badge = badge })
 end
 
+function Tab:EnsureGroup()
+    if not self.DefaultGroup then
+        self.DefaultGroup = self:AddLeftGroupbox(self.Name)
+    end
+    return self.DefaultGroup
+end
+
+Window.Tab = Window.AddTab
+Window.Section = Window.AddTabSection
+function Window:Dialog(spec)
+    return Dialog.Show(spec)
+end
+function Window:Sheet(spec)
+    return Sheet.Show(spec)
+end
+
+Tab.Section = Tab.AddGroupbox
+for _, method in ipairs({ "AddToggle", "AddCheckbox", "AddSlider", "AddDropdown", "AddInput", "AddButton", "AddKeybind", "AddColorPicker", "AddLabel", "AddParagraph", "AddStepper", "AddRangeSlider", "AddSegmented", "AddStat", "AddStatus", "AddTable", "Toggle", "Checkbox", "Slider", "Dropdown", "Input", "Button", "Keybind", "Colorpicker", "Label", "Paragraph" }) do
+    Tab[method] = function(tabSelf, ...)
+        local grp = tabSelf:EnsureGroup()
+        return grp[method](grp, ...)
+    end
+end
+
 function Groupbox:BuildHeader(card, info)
     local height, radius = Config.Group.Header, Config.Group.Radius
+    local collapsed = info.Collapsed == true
     local bar = Draw.Box("TextButton", { Name = "Header", Size = UDim2.new(1, 0, 0, height), Parent = card }, "PanelHeader", nil, radius)
-    Draw.Box("Frame", { Position = UDim2.new(0, 0, 1, -radius), Size = UDim2.new(1, 0, 0, radius), Parent = bar }, "PanelHeader")
-    Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), ZIndex = 2, Parent = bar }, "Outline")
-    local offset = 12
-    if info.Icon then
-        local icon = Sprite.New(bar, info.Icon, 20)
-        icon.AnchorPoint = Vector2.new(0, 0.5)
-        icon.Position = UDim2.new(0, 10, 0.5, -1)
-        offset = 36
-    end
+    self.HeaderPatch = Draw.Box("Frame", { Position = UDim2.new(0, 0, 1, -radius), Size = UDim2.new(1, 0, 0, radius), Visible = not collapsed, BackgroundTransparency = collapsed and 1 or 0, Parent = bar }, "PanelHeader")
+    self.HeaderDivider = Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2), ZIndex = 2, Visible = not collapsed, BackgroundTransparency = collapsed and 1 or 0, Parent = bar }, "Outline")
+    local iconSpec = (info.Icon and info.Icon ~= "") and info.Icon or Icons.FromTitle(info.Name, "qblock")
+    local icon = Icons.Create(bar, iconSpec, 20, nil, info.Name)
+    icon.AnchorPoint = Vector2.new(0, 0.5)
+    icon.Position = UDim2.new(0, 10, 0.5, -1)
+    local offset = 36
     local badgeWidth = 0
     if info.Badge then
         badgeWidth = #tostring(info.Badge) * 8 + 16
@@ -4116,15 +6859,44 @@ function Groupbox:BuildHeader(card, info)
         badgeWidth += 6
     end
     Draw.Text({ Position = UDim2.fromOffset(offset, 0), Size = UDim2.new(1, -(offset + 34 + badgeWidth), 1, -2), TextTruncate = Enum.TextTruncate.AtEnd, Parent = bar }, "Body", Util.TextSize("Group"), "Text", info.Name or "")
-    self.Chevron = Draw.Text({ Text = "▼", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, -1), Size = UDim2.fromOffset(16, 16), TextXAlignment = Enum.TextXAlignment.Center, Rotation = info.Collapsed and -90 or 0, Parent = bar }, "Glyph", 11, "Muted")
+    self.Chevron = Icons.Vector(bar, "chevron_down", 14, "Muted")
+    self.Chevron.AnchorPoint = Vector2.new(1, 0.5)
+    self.Chevron.Position = UDim2.new(1, -12, 0.5, 0)
+    self.Chevron.Rotation = collapsed and -90 or 0
     bar.Activated:Connect(function()
-        self:SetCollapsed(self.Open.Value > 0.5)
+        self:SetCollapsed(not self.Collapsed)
     end)
 end
 
 function Groupbox:SetCollapsed(collapsed)
+    collapsed = collapsed == true
+    if self.Collapsed == collapsed then
+        return
+    end
+    self.Collapsed = collapsed
+    if collapsed then
+        Popup.Close()
+    end
     Anim.Tween(self.Open, { Value = collapsed and 0 or 1 }, Config.Tween.Collapse)
     Anim.Tween(self.Chevron, { Rotation = collapsed and -90 or 0 }, Config.Tween.Collapse)
+end
+
+function Float.Clamp()
+    local button = Float.Button
+    if not button or not State.Gui then
+        return
+    end
+    local viewport = State.Gui.AbsoluteSize
+    if viewport.X <= 0 or viewport.Y <= 0 then
+        return
+    end
+    local pos = button.Position
+    local absX = viewport.X * pos.X.Scale + pos.X.Offset
+    local absY = viewport.Y * pos.Y.Scale + pos.Y.Offset
+    local size = Float.Size or 48
+    local clampedX = math.clamp(absX, 6, math.max(6, viewport.X - size - 6))
+    local clampedY = math.clamp(absY, 6, math.max(6, viewport.Y - size - 6))
+    button.Position = UDim2.fromOffset(math.floor(clampedX + 0.5), math.floor(clampedY + 0.5))
 end
 
 function Float.Build()
@@ -4145,6 +6917,7 @@ function Float.Build()
         moved = moved or delta.Magnitude > Config.DragThreshold
         if moved then
             button.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
+            Float.Clamp()
         end
         return begin
     end)
@@ -4171,6 +6944,9 @@ end
 function Float.SetVisible(visible)
     if Float.Button then
         Float.Button.Visible = visible
+        if visible then
+            Float.Clamp()
+        end
     end
 end
 
@@ -4183,7 +6959,7 @@ function Watermark.Build(title)
     local coin = Sprite.New(slot, "coin", 18)
     coin.AnchorPoint = Vector2.new(0.5, 0)
     coin.Position = UDim2.fromScale(0.5, 0)
-    Anim.Tween(coin, { Size = UDim2.fromOffset(3, 18) }, 0.45, "Sine", -1, true)
+    Anim.Loop("Watermark", coin, { Size = UDim2.fromOffset(3, 18) }, 0.45, "Sine", true)
     local name = Draw.Text({ Text = title:upper(), AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 20), LayoutOrder = 2, Parent = frame }, "Logo", Config.Text.Watermark + 1, "Coin")
     Draw.Stroke(name, "Ink", 1.5)
     Watermark.Stats = {}
@@ -4218,11 +6994,12 @@ end
 function Watermark.SetVisible(visible)
     if Watermark.Frame then
         Watermark.Frame.Visible = visible
+        Anim.SetGroupActive("Watermark", visible)
         Watermark.Update()
     end
 end
 
--- ละอองพื้นหลัง: label ชุดเดียววนใช้ซ้ำ tween เดียวต่อรอบ หยุดเองเมื่อซ่อนเมนู
+-- Ambient particle pool: reuses labels with a single tween per cycle; pauses when hidden
 function Particles.Build(parent)
     local layer = Draw.New("Frame", { Name = "Particles", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = 1, Parent = parent })
     Particles.Layer = layer
@@ -4339,7 +7116,7 @@ function Notify.Push(title, content, duration, kind)
 end
 
 
--- หน้าโหลด: ฉากด่านย่อส่วน เห็ดวิ่งบนพื้นเป็นแถบความคืบหน้า แต่ละขั้นผูกกับงานจริง (โหลดฟอนต์ / สร้างเมนู)
+-- Stage loader screen: mini level progress bar synced to font loading and window build
 Intro.Width, Intro.Height, Intro.Ground = 600, 320, 44
 Intro.MinStep = 0.22
 Intro.StepTimeout = 15
@@ -4387,13 +7164,14 @@ end
 
 function Intro.BuildCard(screen)
     local width, height = Intro.Width, Intro.Height
-    local card = Draw.New("CanvasGroup", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(width + 6, height + 6), BackgroundTransparency = 1, Parent = screen })
+    local pad, shadow = 4, 6
+    local card = Draw.New("CanvasGroup", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(width + pad + shadow, height + pad + shadow), BackgroundTransparency = 1, Parent = screen })
     local scale = Draw.New("UIScale", { Scale = State.UserScale * 0.6, Parent = card })
-    Draw.Box("Frame", { Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(width, height), Parent = card }, "Shadow", nil, 18)
-    local scene = Draw.Box("Frame", { Size = UDim2.fromOffset(width, height), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0, ClipsDescendants = true, Parent = card }, nil, nil, 18)
+    Draw.Box("Frame", { Position = UDim2.fromOffset(pad + shadow, pad + shadow), Size = UDim2.fromOffset(width, height), Parent = card }, "Shadow", nil, 18)
+    local scene = Draw.Box("Frame", { Position = UDim2.fromOffset(pad, pad), Size = UDim2.fromOffset(width, height), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0, ClipsDescendants = true, Parent = card }, nil, nil, 18)
     local gradient = Draw.New("UIGradient", { Rotation = 90, Color = ColorSequence.new(Theme.Colors.Topbar, Theme.Colors.Backdrop), Parent = scene })
     gradient.Enabled = true
-    local border = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(width, height), ZIndex = 20, Parent = card })
+    local border = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(pad, pad), Size = UDim2.fromOffset(width, height), ZIndex = 20, Parent = card })
     Draw.Corner(border, 18)
     Draw.Stroke(border, "Outline", 3, true)
     return card, scene, scale
@@ -4401,18 +7179,20 @@ end
 
 function Intro.BuildScenery(scene)
     local ground = Intro.Ground
+    local sky = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -ground), ClipsDescendants = true, ZIndex = 1, Parent = scene })
     for _, hill in ipairs({ { 0.14, 150, "GrassDark" }, { 0.3, 90, "Grass" }, { 0.8, 120, "GrassDark" } }) do
-        local mound = Draw.Box("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(hill[1], 0, 1, -ground), Size = UDim2.fromOffset(hill[2], hill[2]), BackgroundTransparency = 0.35, Parent = scene }, hill[3], nil, UDim.new(1, 0))
+        local mound = Draw.Box("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(hill[1], 0, 1, 0), Size = UDim2.fromOffset(hill[2], hill[2]), BackgroundTransparency = 0.35, Parent = sky }, hill[3], nil, UDim.new(1, 0))
         mound.ZIndex = 1
     end
     for index, spot in ipairs({ { 0.12, 30, 64 }, { 0.62, 18, 50 }, { 0.84, 64, 40 } }) do
-        local cloud = Draw.Cloud(scene, spot[3])
+        local cloud = Draw.Cloud(sky, spot[3])
         cloud.Position = UDim2.new(spot[1], 0, 0, spot[2])
         cloud.ZIndex = 1
         Anim.Tween(cloud, { Position = UDim2.new(spot[1], 36, 0, spot[2]) }, 5 + index, "Sine", -1, true)
     end
-    local floor = Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, ground), ZIndex = 3, Parent = scene }, "Brick")
-    local bricks = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 10), Size = UDim2.new(1, 0, 1, -10), ZIndex = 3, Parent = floor })
+    local floor = Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, ground), ClipsDescendants = true, ZIndex = 3, Parent = scene }, "Brick", nil, 18)
+    Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, 18), ZIndex = 3, Parent = floor }, "Brick")
+    local bricks = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 10), Size = UDim2.new(1, -12, 1, -14), ClipsDescendants = true, ZIndex = 3, Parent = floor })
     Draw.Bricks(bricks, 18, "BrickDark")
     for _, line in ipairs(bricks:GetChildren()) do
         line.ZIndex = 3
@@ -4528,7 +7308,7 @@ function Intro.Finale(scene, track)
     end
 end
 
--- ESP กลางของ UI วาดด้วย GUI ล้วน (ไม่พึ่ง Drawing) สคริปต์ส่งแค่ Provider ที่คืนรายการเป้า
+-- Pure GuiObject ESP engine (no Drawing API dependency); scripts supply a target Provider
 local Visuals = {
     Settings = {
         Enabled = false,
@@ -4609,7 +7389,7 @@ function Visuals.Label(parent, alignY)
     return label
 end
 
---@return table ชุด GUI ของเป้าหนึ่งตัว สร้างครั้งเดียวแล้วใช้ซ้ำ
+--@return table Reusable GUI elements for a single ESP target
 function Visuals.BuildEntry(parent)
     local entry = {}
     entry.Box = Draw.New("Frame", { BackgroundTransparency = 1, Visible = false, Parent = parent })
@@ -4666,7 +7446,7 @@ function Visuals.SetLine(line, from, to, thickness)
     line.Visible = true
 end
 
--- วางกล่อง/แถบ/ป้ายจากกรอบ 2D (x,y มุมซ้ายบน, w,h) ใช้ร่วมกันทั้ง ESP จริงและกรอบ preview
+-- Position 2D box, bars, and labels from bounding rect (shared by live ESP and preview)
 function Visuals.Layout(entry, x, y, w, h, info, color, origin)
     local settings = Visuals.Settings
     local full = settings.Box and settings.BoxStyle ~= "Corner"
@@ -4701,19 +7481,32 @@ function Visuals.Layout(entry, x, y, w, h, info, color, origin)
     end
     entry.HealthText.Visible = settings.HealthText
     if settings.HealthText then
-        entry.HealthText.Text = tostring(math.floor(info.Health or 0))
+        local hpInt = math.floor(info.Health or 0)
+        if entry.LastHp ~= hpInt then
+            entry.LastHp = hpInt
+            entry.HealthText.Text = tostring(hpInt)
+        end
         entry.HealthText.TextSize = settings.TextSize - 2
         entry.HealthText.Position = UDim2.fromOffset(x - 20, y + h * (1 - ratio))
     end
 
     entry.Name.Visible = settings.Name
     if settings.Name then
-        entry.Name.Text, entry.Name.TextSize, entry.Name.TextColor3 = info.Name or "", settings.TextSize, color
+        local nameStr = info.Name or ""
+        if entry.LastName ~= nameStr then
+            entry.LastName = nameStr
+            entry.Name.Text = nameStr
+        end
+        entry.Name.TextSize, entry.Name.TextColor3 = settings.TextSize, color
         entry.Name.Position = UDim2.fromOffset(x + w / 2, y - 2)
     end
     entry.Distance.Visible = settings.Distance and info.Distance ~= nil
     if entry.Distance.Visible then
-        entry.Distance.Text = math.floor(info.Distance) .. "m"
+        local distInt = math.floor(info.Distance)
+        if entry.LastDist ~= distInt then
+            entry.LastDist = distInt
+            entry.Distance.Text = distInt .. "m"
+        end
         entry.Distance.TextSize = settings.TextSize - 1
         entry.Distance.Position = UDim2.fromOffset(x + w / 2, y + h + 2)
     end
@@ -4893,7 +7686,7 @@ function Visuals:SetPreview(on)
     self:Set("Preview", on == true)
 end
 
--- กรอบ preview ด้านขวาของหน้าต่าง: โคลนตัวละครเราใส่ ViewportFrame แล้ววาด ESP ทับด้วยค่าเดียวกัน
+-- Right-side ESP preview card: clones local character into ViewportFrame with live ESP overlay
 function Visuals.PreviewBuild()
     local window = State.Window
     if not window or Visuals.Preview.Frame then
@@ -4961,7 +7754,7 @@ function Visuals.PreviewWanted()
         and (Visuals.PreviewTab == nil or window.ActiveTab == Visuals.PreviewTab)
 end
 
--- เลื่อนเข้าแบบเด้งตอนเปิด เลื่อนกลับเข้าหลังหน้าต่างตอนปิด
+-- Slide out from behind the window on open; retract on close
 function Visuals.PreviewShow(on)
     local preview = Visuals.Preview
     if not preview.Frame or preview.Shown == on then
@@ -5005,13 +7798,13 @@ function Visuals.PreviewRender()
     Visuals.PreviewDraw()
 end
 
--- เลือดขึ้นลงเหมือนโดนยิงแล้วฟื้น ระยะแกว่งไปมา ให้เห็นว่าทุกองค์ประกอบขยับตามจริง
+-- Oscillate preview health and distance to demonstrate live bar and label updates
 function Visuals.PreviewRoot()
     local model = Visuals.Preview.Model
     return model and (model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart)
 end
 
---@return Vector2 จุดบนจอของ ViewportFrame (กล้องใน viewport ใช้ WorldToViewportPoint ไม่ได้)
+--@return Vector2 ViewportFrame screen projection
 function Visuals.PreviewProject(pos, size)
     local cam = Visuals.Preview.Camera
     local rel = cam.CFrame:PointToObjectSpace(pos)
@@ -5068,7 +7861,7 @@ function Visuals.PreviewStep(deltaTime)
     end
 end
 
--- มินิแมพวงกลม ตัวเราอยู่กลาง หมุนตามกล้อง เป้านอกระยะเกาะขอบแบบจาง
+-- Circular radar minimap centered on local player, rotated by camera heading
 Visuals.Radar = { Dots = {} }
 
 function Visuals.RadarBuild()
@@ -5181,7 +7974,7 @@ function Visuals.Start()
     end)
 end
 
--- สร้างแท็บ Visuals ครบชุดในบรรทัดเดียว คืนค่า tab ให้สคริปต์เติมกลุ่มเองได้
+-- Build complete Visuals tab in one call and return tab for custom groupboxes
 function Window:AddVisualsTab(options)
     options = options or {}
     Visuals.Start()
@@ -5485,7 +8278,7 @@ function Compat.NeedCap(option, caps)
 end
 
 ---V1 has no disabled state: vetoes turning `option` on and tells the player why (missing game module, unsupported executor).
----@param reason any  text spec, e.g. Library:T("Not available on this executor", "ใช้กับ executor นี้ไม่ได้")
+---@param reason any  text spec, e.g. Library:T("Not available on this executor", "Unsupported executor")
 function Compat.Block(option, reason)
     option = type(option) == "string" and Library.Options[option] or option
     if type(option) ~= "table" or type(option.AddGuard) ~= "function" then
@@ -5657,7 +8450,7 @@ function Compat.Warm()
     end
 end
 
---@return {EN,TH} ข้อความจาก Lang.Strings ที่ format แล้วทั้งสองภาษา
+--@return {EN,TH} Formatted bilingual string from Lang.Strings
 function Lang.Format(key, ...)
     local spec = Lang.Strings[key] or { EN = key, TH = key }
     local args = table.pack(...)
@@ -5827,106 +8620,6 @@ function Window:AddSettingsTab()
     return tab
 end
 
-function KeyGate.ReadSaved()
-    if not Util.FileApi() or not Util.Exists(Config.KeyCache) then
-        return nil
-    end
-    local ok, raw = pcall(readfile, Config.KeyCache)
-    local key = ok and type(raw) == "string" and raw:gsub("%s", "") or ""
-    return key ~= "" and key or nil
-end
-
-function KeyGate.Verify(settings, key)
-    local ok, valid, message = pcall(settings.Verify, key)
-    if not ok then
-        return false, tostring(valid)
-    end
-    return valid == true, message
-end
-
-function KeyGate.Show(settings, onUnlocked)
-    local saved = settings.SaveKey ~= false and KeyGate.ReadSaved()
-    if saved and KeyGate.Verify(settings, saved) then
-        onUnlocked()
-        return
-    end
-    local dim = Draw.New("Frame", { Name = "KeyGate", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = Config.Layer.Key, Parent = State.Gui })
-    Anim.Tween(dim, { BackgroundTransparency = 0.45 }, Config.Tween.Slide)
-    local width = State.Touch and 300 or 360
-    local card, face, scale = Popup.Card(width, 120)
-    card.AnchorPoint = Vector2.new(0.5, 0.5)
-    card.Position = UDim2.fromScale(0.5, 0.5)
-    card.Parent = dim
-    scale.Scale = 0.8 * State.UserScale
-    Anim.Tween(scale, { Scale = State.UserScale }, Config.Tween.Pop, "Back")
-    local header = KeyGate.BuildHeader(face, settings)
-    local host = Draw.New("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, header), Size = UDim2.new(1, 0, 1, -header), Parent = face })
-    local body = Container.New(host, { PadX = 16, PadY = 12, OnHeight = function(height)
-        card.Size = UDim2.fromOffset(width + Config.Group.Shadow, header + height + Config.Group.Shadow)
-    end })
-    body:SetWidth(width)
-    KeyGate.BuildBody(body, settings, function()
-        local fade = Anim.Tween(scale, { Scale = 0.8 * State.UserScale }, 0.16, "In")
-        Anim.Tween(dim, { BackgroundTransparency = 1 }, 0.2)
-        fade.Completed:Once(function()
-            dim:Destroy()
-            if not Library.Unloaded then
-                onUnlocked()
-            end
-        end)
-    end, face)
-end
-
-function KeyGate.BuildHeader(face, settings)
-    local height = 58
-    local bar = Draw.Box("Frame", { Size = UDim2.new(1, 0, 0, height), Parent = face }, "Accent", nil, 12)
-    Draw.Box("Frame", { Position = UDim2.new(0, 0, 1, -12), Size = UDim2.new(1, 0, 0, 12), Parent = bar }, "Accent")
-    Draw.Box("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 3), Parent = bar }, "Outline")
-    local block = Sprite.New(bar, "key", 36)
-    block.Position = UDim2.fromOffset(14, 10)
-    Anim.Tween(block, { Position = UDim2.fromOffset(14, 6) }, 0.8, "Sine", -1, true)
-    local title = Draw.Text({ Position = UDim2.fromOffset(60, 0), Size = UDim2.new(1, -70, 1, -3), Parent = bar }, "Display", 24, "White", settings.Title or Lang.Strings.KeyTitle)
-    Draw.Stroke(title, "Ink", 2)
-    return height
-end
-
-function KeyGate.BuildBody(body, settings, onPass, face)
-    body:AddLabel(settings.Note or Lang.Strings.KeyNote)
-    local input = body:AddInput(nil, { Placeholder = Lang.Strings.KeyPlaceholder })
-    local status
-    local checking = false
-    body:AddButton({ Text = Lang.Strings.GetKey, Style = "Warning", Func = function()
-        local link = type(settings.Link) == "function" and settings.Link() or settings.Link
-        if link and Util.Clipboard(link) then
-            status:SetText(Lang.Strings.KeyCopied)
-        else
-            status:SetText(tostring(link or "-"))
-        end
-    end }):AddButton({ Text = Lang.Strings.CheckKey, Style = "Success", Func = function()
-        if checking then
-            return
-        end
-        checking = true
-        status:SetText(Lang.Strings.KeyChecking)
-        local key = input.Value:gsub("%s", "")
-        task.spawn(function()
-            local valid, message = KeyGate.Verify(settings, key)
-            status:SetText(message or Lang.Strings[valid and "KeyValid" or "KeyInvalid"])
-            if not valid then
-                checking = false
-                Anim.Shake(face)
-                return
-            end
-            if settings.SaveKey ~= false and Util.FileApi() then
-                Util.EnsureFolder(Config.Root)
-                pcall(writefile, Config.KeyCache, key)
-            end
-            onPass()
-        end)
-    end })
-    status = body:AddLabel("")
-end
-
 function Library:CreateWindow(options)
     options = options or {}
     local language = options.Language
@@ -5935,7 +8628,7 @@ function Library:CreateWindow(options)
     end
     State.Language = language == "TH" and "TH" or "EN"
     State.UserScale = math.clamp(options.Scale or 1, Config.ScaleRange.Min, Config.ScaleRange.Max)
-    Theme.Apply(Config.SeasonTheme or options.Theme or "Overworld")
+    Theme.Apply(options.Theme or Config.SeasonTheme or "Overworld")
     Assets.Configure(Config.DefaultAssets)
     Assets.Configure(options.Assets)
     Window.DetectTouch(options.Layout)
@@ -5950,7 +8643,7 @@ function Library:CreateWindow(options)
     Float.Build()
     Watermark.Build(options.WatermarkTitle or window.Title)
     Watermark.SetVisible(options.Watermark ~= false)
-    Configs.SetFolder(options.ConfigFolder or window.Title)
+    Configs.SetFolder(options.ConfigFolder or options.Folder or window.Title)
     local function Build()
         if Library.Unloaded then
             return
@@ -5998,12 +8691,7 @@ function Library:CreateWindow(options)
             OnDone = Reveal,
         })
     end
-    local keySystem = options.KeySystem
-    if keySystem and keySystem.Enabled ~= false and type(keySystem.Verify) == "function" then
-        KeyGate.Show(keySystem, Open)
-    else
-        Open()
-    end
+    Open()
     return window
 end
 
@@ -6090,6 +8778,30 @@ function Library:Unload()
     for _, callback in ipairs(State.UnloadHooks) do
         Util.Try(callback)
     end
+    if Reactive and Reactive.DisposeAll then
+        Reactive.DisposeAll()
+    end
+    if Motion then
+        if Motion.Connection then
+            Motion.Connection:Disconnect()
+            Motion.Connection = nil
+        end
+        if Motion.Springs then
+            table.clear(Motion.Springs)
+        end
+        if Motion.Tickers then
+            table.clear(Motion.Tickers)
+        end
+    end
+    for _, list in pairs(Anim.Loops or {}) do
+        for _, entry in ipairs(list) do
+            if entry.Tween then
+                pcall(entry.Tween.Cancel, entry.Tween)
+            end
+        end
+    end
+    table.clear(Anim.Loops)
+    table.clear(Anim.GroupState)
     for _, connection in ipairs(State.Connections) do
         connection:Disconnect()
     end
@@ -6097,6 +8809,16 @@ function Library:Unload()
     table.clear(State.KeyPickers)
     table.clear(State.Tasks)
     table.clear(Layout.Dirty)
+    table.clear(Layout.All)
+    table.clear(Layout.Measured)
+    Layout.MeasuredCount = 0
+    table.clear(Theme.Bound)
+    table.clear(Theme.Renderers)
+    table.clear(Theme.InstanceRenderers)
+    table.clear(Lang.Bound)
+    table.clear(Lang.Listeners)
+    table.clear(Lang.InstanceListeners)
+    table.clear(Fonts.Texts)
     State.Drag, State.Binding, State.Popup, State.Window, State.NotifyHost = nil, nil, nil, nil, nil
     if State.Gui then
         State.Gui:Destroy()
@@ -6105,5 +8827,41 @@ function Library:Unload()
 end
 
 Library.Themes = Themes.Order
+Library.Ref = Reactive.Ref
+Library.Computed = Reactive.Computed
+Library.Effect = Reactive.Effect
+Library.Watch = Reactive.Watch
+Library.Batch = Reactive.Batch
+Library.Store = Reactive.Store
+Library.IsRef = Reactive.IsRef
+Library.tw = Tailwind.Apply
+Library.h = Tailwind.CreateElement
+Library.Component = function(self, name, renderFn)
+    if type(self) == "string" then
+        return Tailwind.Component(self, name)
+    end
+    return Tailwind.Component(name, renderFn)
+end
+Library.Show = Tailwind.Show
+Library.For = Tailwind.For
+Library.Icons = Icons
+Library.Icon = function(self, parent, name, size, color)
+    if typeof(self) == "Instance" then
+        return Icons.Create(self, parent, name, size)
+    end
+    return Icons.Create(parent, name, size, color)
+end
+Library.Gui = Gui
+Library.Motion = Motion
+Library.Fx = Fx
+Library.Dialog = function(self, spec)
+    return Dialog.Show(type(self) == "table" and self ~= Library and self or spec)
+end
+Library.CloseDialog = Dialog.Close
+Library.Sheet = function(self, spec)
+    return Sheet.Show(type(self) == "table" and self ~= Library and self or spec)
+end
+Library.CloseSheet = Sheet.Close
+Library.Window = Library.CreateWindow
 
 return Library
