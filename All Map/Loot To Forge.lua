@@ -91,13 +91,13 @@ function MarioBanner.Show()
  |_|  |_/_/   \_\_| \_\___\___/  |_| |_|\___/|____/
 ]],
         rule,
-        "   BUILD THE PYRAMID  //  by xDTaraZ  //  discord.gg/FHVfmeSceA",
+        "   LOOT TO FORGE  //  by xDTaraZ  //  discord.gg/FHVfmeSceA",
         "   executor: " .. executor .. "   //   player: " .. game:GetService("Players").LocalPlayer.Name,
         rule,
     }, "\n"))
 end
 
----@param label string  what just finished loading
+---@param label string
 function MarioBanner.Step(label)
     local now = os.clock()
     MarioBanner.Done = math.min(MarioBanner.Done + 1, MarioBanner.Total)
@@ -147,8 +147,8 @@ xDTaraZ.Config = {
     SaveFolder = "Loot To Forge",
     Discord = "https://discord.gg/FHVfmeSceA",
     UpdateLog = {
-        { "2026-10-10", "Find Old Server: join a server still on the old version, where Spawn Rolls works. Remembers old servers it found\nSpawn Best Set: strongest weapon, armor and hat, equipped\nAuto Roll Race: pick target stars\nSpawn Race Rolls, Season Tickets and Tokens (OP)\nAuto Token Shop: every pass and pack for free\nHop to emptiest server, save and return position" },
-        { "2026-10-06", "Updated for the new game version\nSpawn Items now lists only items that still work (ores and runes)\nDupe Whole Inventory skips items the game no longer allows" },
+        { "2026-10-14", "Autonomous Egg2 Hatching & Auto-Incubate Watchdog\nAccurate Server Timer Sync & Zero-Crash Status UI\nTargeted Legendary Honor Hunt & Auto Egg Trimming\nFull Combat Aura, God Ore Spawning & Rebirth Farm" },
+        { "2026-10-13", "Map-Wide Insane Kill Aura (SuperLoot + All Mobs + World Boss)\nInstant God Ore Spawner & Stage 27 Tier 48 farm\nFast Tower Season Coins and shop automation\nDeadlock-free cached profile & enhanced scheduler" },
     },
     UiSource = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/ui.lua",
     ReloadSource = [[
@@ -169,23 +169,28 @@ if type(body) == "string" then loadstring(body)() end]],
     FailWindow = 10,
     AlertTries = 20,
     AlertDelay = 0.5,
-    TickDelay = 0.2,
-    StatusInterval = 2,
-    PumpInterval = 0.25,
-    RefillAmount = 100000,
+    TickDelay = 0.15,
+    StatusInterval = 1.5,
+    PumpInterval = 0.2,
     OwnedOresLabel = "Owned ores",
-    AcquireRounds = 300,
-    StoneWorkers = 8,
-    StoneCallsPerWorker = 15,
-    TowerWorkers = 128,
+    AcquireRounds = 5,
+    StoneWorkers = 16,
+    StoneCallsPerWorker = 25,
+    EggFarmWorkers = 16,
+    EggFarmCalls = 25,
+    TurboFarmWorkers = 24,
+    TurboFarmCalls = 35,
+    TurboBurstCount = 10000,
+    PetInterval = 0.5,
+    PetDeployInterval = 15,
+    TowerWorkers = 16,
     CoinFarmTimeout = 600,
-    PotionStack = 100000,
-    TowerCallsPerWorker = 25,
+    TowerCallsPerWorker = 15,
     GearForgeTries = 15,
     GearEnhanceTries = 2,
     GearEnhanceWorkers = 8,
     SlotEnhanceRounds = 200,
-    ClickInterval = 0.16,
+    ClickInterval = 0.12,
     ForgeTargets = {
         { name = "Great Weapon", forgeType = "Weapon", ores = 13 },
         { name = "Katana", forgeType = "Weapon", ores = 4 },
@@ -210,12 +215,7 @@ if type(body) == "string" then loadstring(body)() end]],
     IndexInterval = 60,
     IndexLevelClaims = 50,
     ClaimIdScan = 20,
-    BonusRewards = { Race = { id = "4", per = 2 }, Season = { id = "5", per = 2 }, Token = { id = "6", per = 20 } },
-    BonusBatch = 300,
-    BonusMaxClaims = 1000,
-    LookKinds = { "Ore", "EnchStone", "Weapon", "Armor", "Material", "Class" },
-    BonusKeyLength = 16,
-    RaceRefill = 40,
+    LookKinds = { "Ore", "EnchStone", "Weapon", "Armor", "Material", "Class", "Pet", "Egg", "Food" },
     TokenShopInterval = 60,
     ClaimInterval = 30,
     SeasonInterval = 60,
@@ -245,12 +245,6 @@ if type(body) == "string" then loadstring(body)() end]],
     HopGiveUp = 8,
     HopStall = 30,
     HopGap = 15,
-    OldServerFlag = "oldserver.json",
-    OldServerKnown = "oldservers.json",
-    OldServerKeep = 20,
-    OldServerVersion = 36046,
-    OldServerTries = 40,
-    OldServerGap = 4,
     TrainRejoinDelay = 0.3,
     TrainWatchdog = 3,
     TrainAcceptWait = 1.5,
@@ -258,7 +252,7 @@ if type(body) == "string" then loadstring(body)() end]],
     TrainSettle = 0.5,
     WarnCooldown = 30,
     WarnMemory = 64,
-    KillAuraInterval = 0.25,
+    KillAuraInterval = 0.12,
     KillDamage = 1e30,
     RaceRollDelay = 0.15,
     RaceResultWait = 2,
@@ -268,25 +262,35 @@ if type(body) == "string" then loadstring(body)() end]],
     CodeReplyWait = 1.5,
     Codes = { "100000CCU", "50000CCU", "30000CCU", "20000CCU" },
     Needs = {
-        CollectOre = { "Remote.Stage.StageFinishedRF", "Remote.Stage.GetOreRF", "Remote.Stage.ClaimedAllOreRE", "Config.Stage.Helper", "Config.Ore.Config" },
-        SuperLootAura = { "Remote.SuperLoot.KillSuperLootRE", "Remote.SuperLoot.RefreshSuperLootRE", "Remote.Stage.GetOreRF" },
-        AutoWorldBoss = { "Remote.WorldBoss.IntoWorldBossFight", "Remote.WorldBoss.ExitWorldBossFight", "Remote.WorldBoss.BossDeadRE", "Remote.Attack.UseAnyATKRE", "Remote.Attack.AttackEnemyServiceRE" },
-        AutoIndex = { "Remote.Forge.ForgeRF", "Remote.Index.TryClaimIndexExpRF", "Utils.ForgeUtils", "Config.Weapon.Config", "Config.Armor.Config" },
-        MaxGear = { "Utils.BalanceUtils", "Remote.Forge.ForgeRF", "Remote.Backpack.EnhantEquipmentRF", "Remote.Backpack.EnchantRE", "Config.Enhant.Config", "Config.EnchStone.Show" },
-        AutoEquip = { "Utils.BalanceUtils", "Remote.Backpack.TryEquipItemRE", "Config.Weapon.Helper", "Config.Armor.Helper" },
-        AutoForge = { "Remote.Forge.ForgeRF", "Remote.Backpack.TrySellItemRE", "Config.Ore.Config" },
-        AutoSell = { "Remote.Backpack.TrySellItemRE", "Config.Weapon.Config", "Config.Armor.Config" },
-        AutoTrain = { "Remote.Train.IntoAutoTrainRE", "Remote.Train.ExitAutoTrainRE", "Config.TrainArea.Config" },
-        AutoRebirth = { "Remote.Rebirth.TryRebirthRE", "Config.Rebirth.Helper" },
-        AutoUpgrade = { "Remote.Upgrade.UpgradeOnceRE", "Config.Upgrade.Config" },
-        AutoTower = { "Remote.Dungeon.TryIntoDungeonRF", "Remote.Dungeon.StartRoundRE", "Remote.Dungeon.CompleteRoundRF", "Config.Dungeon.Config.LootTab" },
-        AutoSeason = { "Remote.Season.TryClaimDailyTicRE", "Remote.Season.ExchangeGoodsRE", "Remote.Season.LuckRE", "Config.Season.GoodsConfig" },
-        AutoClaim = { "Remote.Offline.TryClaimOfflineRewardRE", "Remote.Online.TryClaimRE" },
-        AutoRace = { "Remote.Class.LuckOnceRE", "Config.Class.Config" },
-        AutoBestRace = { "Remote.Class.ChangeEquipedIndexRE", "Config.Class.Config" },
-        KeepOre = { "Remote.Stage.LostAllOreRF" },
+        AutoBattle = { "Utils.CommunicationUtils", "CTRL.EnemyCTRL", "Config.Stage.Helper" },
+        AutoCheckIn = { "LocalData.PlanKData", "Remote.PlanKing_Server.TryClaimRE", "Config.PlanK.Config" },
+        AutoTokenShop = { "Config.TokenShop.Config", "Remote.TokenShop_Server.OpenGoodsRE", "Remote.TokenShop_Server.ExchangeGoodsRF" },
+        KillAura = { "Utils.CommunicationUtils" },
+        CollectOre = { "Remote.Stage_Server.StageFinishedRF", "Remote.Stage_Server.GetOreRF", "Remote.Stage_Server.ClaimedAllOreRE", "Config.Stage.Helper", "Config.Ore.Config" },
+        SuperLootAura = { "Remote.SuperLoot_Server.KillSuperLootRE", "Remote.SuperLoot_Server.RefreshSuperLootRE", "Remote.Stage_Server.GetOreRF" },
+        AutoWorldBoss = { "Remote.WorldBoss_Server.IntoWorldBossFightRE", "Remote.WorldBoss_Server.ExitWorldBossFightRE", "Remote.WorldBoss_Server.BossDeadRE", "Remote.Attack_Server.UseAnyATKRE", "Remote.Attack_Server.AttackEnemyServiceRE" },
+        AutoIndex = { "Remote.Forge_Server.ForgeRF", "Remote.Index_Server.TryClaimIndexExpRF", "Utils.ForgeUtils", "Config.Weapon.Config", "Config.Armor.Config" },
+        MaxGear = { "Utils.BalanceUtils", "Remote.Forge_Server.ForgeRF", "Remote.Backpack_Server.EnhantEquipmentRF", "Remote.Backpack_Server.EnchantRE", "Config.Enhant.Config", "Config.EnchStone.Show" },
+        AutoEquip = { "Utils.BalanceUtils", "Remote.Backpack_Server.TryEquipItemRE", "Config.Weapon.Helper", "Config.Armor.Helper" },
+        AutoForge = { "Remote.Forge_Server.ForgeRF", "Remote.Backpack_Server.TrySellItemRE", "Config.Ore.Config" },
+        AutoSell = { "Remote.Backpack_Server.TrySellItemRE", "Config.Weapon.Config", "Config.Armor.Config" },
+        AutoTrain = { "Remote.Train_Server.IntoAutoTrainRE", "Remote.Train_Server.ExitAutoTrainRE", "Config.TrainArea.Config" },
+        AutoRebirth = { "Remote.Rebirth_Server.TryRebirthRE", "Config.Rebirth.Helper" },
+        AutoUpgrade = { "Remote.Upgrade_Server.UpgradeOnceRE", "Config.Upgrade.Config" },
+        AutoTower = { "Remote.Dungeon_Server.TryIntoDungeonRF", "Remote.Dungeon_Server.StartRoundRE", "Remote.Dungeon_Server.CompleteRoundRF", "Config.Dungeon.Config.LootTab" },
+        RaceBuyRolls = { "Config.Season.GoodsConfig", "Remote.Season_Server.ExchangeGoodsRE", "LocalData.ClassData" },
+        AutoSeason = { "Remote.Season_Server.TryClaimDailyTicRE", "Remote.Season_Server.ExchangeGoodsRE", "Remote.Season_Server.LuckRE", "Config.Season.GoodsConfig" },
+        AutoClaim = { "Remote.Offline_Server.TryClaimOfflineRewardRE", "Remote.Online_Server.TryClaimRE" },
+        AutoRace = { "Remote.Class_Server.LuckOnceRE", "Config.Class.Config" },
+        AutoBestRace = { "Remote.Class_Server.ChangeEquipedIndexRE", "Config.Class.Config" },
+        AutoHatchEgg = { "Remote.Pet_Server.TryHatchEggRE", "Remote.Pet_Server.TryOpenEggRE", "Config.Egg.Config" },
+        AutoEquipPet = { "Remote.Pet_Server.IsEquipPetRE", "Utils.BalanceUtils", "Config.Pet.Config" },
+        AutoFeedPet = { "Remote.Pet_Server.FeedPetRE", "Config.Pet.Helper", "Config.Food.Config" },
+        AutoDeployPet = { "Remote.Pet_Server.IsDeployPetRE", "Remote.Pet_Server.ClaimAllDeployRewardRE", "Config.Pet.Config" },
+        AutoSellPet = { "Remote.Pet_Server.DeleteRE", "Config.Pet.Config", "Config.Egg.Config" },
+        KeepOre = { "Remote.Stage_Server.LostAllOreRF" },
     },
-    KaitunToggles = { "MaxGear", "AutoEquip", "AutoForge", "AutoSell", "AutoTrain", "AutoRebirth", "AutoUpgrade", "AutoClaim", "AutoSeason", "KillAura", "SuperLootAura", "AutoWorldBoss", "AutoTower", "GodMode", "AutoBestRace" },
+    KaitunToggles = { "MaxGear", "AutoEquip", "AutoForge", "AutoSell", "AutoTrain", "AutoRebirth", "AutoUpgrade", "AutoClaim", "AutoCheckIn", "AutoSeason", "KillAura", "SuperLootAura", "AutoWorldBoss", "AutoTower", "GodMode", "AutoBestRace", "AutoHatchEgg", "AutoEquipPet", "AutoFeedPet", "AutoDeployPet" },
 }
 
 local Config = xDTaraZ.Config
@@ -300,6 +304,11 @@ xDTaraZ.State = {
     SavedSpot = nil,
     Rejoining = false,
     Lock = nil,
+    LockOwner = nil,
+    LockTime = 0,
+    Profile = nil,
+    ProfileTime = 0,
+    ProfileCacheTtl = 0.35,
     Failures = {},
     Halted = {},
     InTower = false,
@@ -317,13 +326,22 @@ xDTaraZ.State = {
     Warned = {},
     WarnedCount = 0,
     LastRun = {},
-    Profile = nil,
+    RemoteCache = {},
+    JobRunning = {},
+    WorkerBatches = {},
+    ChildThreads = {},
+    JobGroups = {},
+    JobStats = {},
+    ScheduleCursor = 0,
+    LootPending = {},
+    LootQueue = {},
+    LootSeen = {},
     GearNote = nil,
     IndexNote = nil,
     TowerLoot = 0,
     OreLabels = {},
-    SpawnLabels = {},
     GearLabels = {},
+    SpawnLabels = {},
     BossHopping = false,
     HopFails = 0,
     HopBackoff = nil,
@@ -335,6 +353,7 @@ xDTaraZ.State = {
     Plans = {},
     Runes = nil,
     Conns = {},
+    AuraCursor = 0,
     Opt = {
         MaxGear = false,
         AutoEquip = false,
@@ -348,15 +367,34 @@ xDTaraZ.State = {
         ForgePerTick = 10,
         BossCards = true,
         SeasonSpin = true,
-        SeasonGoods = { ["4"] = true, ["7"] = true },
+        SeasonSpinBatch = 10,
+        SeasonGoods = { ["4"] = true, ["5"] = true, ["7"] = true },
         AutoBestRace = false,
         GodMode = false,
         KeepOre = false,
         CollectOre = false,
-        Stage = nil,
+        Stage = "Stage_27",
         CollectRarities = {},
         KillAura = false,
-        SuperLootAura = false,
+        AutoBattle = false,
+        AutoCheckIn = false,
+        TokenReveal = true,
+        TokenTargets = {},
+        TokenSkipOwned = true,
+        AuraMapWide = true,
+        AuraRange = 0,
+        AuraBatch = 60,
+        AuraBurst = 10,
+        AuraInterval = 0.12,
+        AuraDamage = 1e30,
+        AuraCritical = true,
+        AuraSuper = true,
+        AuraTarget = "All",
+        AutoCollectDrops = true,
+        JobTimeout = 60,
+        WorkerLimit = 16,
+        ParallelJobs = 4,
+        SuperLootAura = true,
         AutoWorldBoss = false,
         BossHop = false,
         BossWaitMinutes = 2.5,
@@ -381,22 +419,38 @@ xDTaraZ.State = {
         AutoClaim = false,
         AutoSeason = false,
         AutoTokenShop = false,
-        BonusKind = "Race",
-        BonusAmount = 1000,
         AutoTower = false,
         AutoRace = false,
         RaceTargets = {},
         RaceMinLevel = nil,
         RaceStar = 0,
         RaceSlot = "Equipped",
-        RaceRefill = false,
         RaceLock = false,
         RaceProtect = false,
+        RaceBuyRolls = true,
         RaceAnim = false,
+        AutoHatchEgg = false,
+        TargetPet = nil,
+        TargetPetCopies = 1,
+        AutoChaseTargetPet = false,
+        AutoLockTargetPet = true,
+        HatchBestFirst = true,
+        SkipEggAnim = true,
+        AutoEquipPet = false,
+        AutoFeedPet = false,
+        AutoDeployPet = false,
+        AutoSellPet = false,
+        DeletePetRarities = { Common = true, UnCommon = true, Rare = true },
+        KeepBestPets = 6,
+        AutoDeleteEggs = false,
+        KeepPerEgg = 10,
+        EggFarmRounds = 10,
+        CoinTarget = 50000,
         SpawnItem = nil,
-        SpawnAmount = 100000,
-        CoinTarget = 1000000,
-        OldVersion = 36046,
+        SpawnAmount = 1000,
+        TurboSpawn = false,
+        TurboBurst = 10000,
+        PotionAmount = 1000,
         SpawnGear = nil,
         GearCopies = 1,
         SpeedOn = false,
@@ -411,10 +465,11 @@ local State = xDTaraZ.State
 
 xDTaraZ.GameLib = { Loaded = {}, Failed = {}, Apis = {}, Deferred = {} }
 
----@return boolean, any  ok + module, retried from an identity-2 thread when the executor can really switch
+---@param module Instance
+---@return boolean, any
 function xDTaraZ.GameLib.RequireAsGame(module)
     local done, ok, loaded = false, false, nil
-    task.spawn(function()
+    local thread = xDTaraZ.Util.Child(function()
         pcall(setthreadidentity, 2)
         local read, identity = pcall(getthreadidentity)
         if read and identity == 2 then
@@ -426,15 +481,25 @@ function xDTaraZ.GameLib.RequireAsGame(module)
     while not done and os.clock() < deadline do
         task.wait()
     end
+    if not done then pcall(task.cancel, thread) return false, "module require timed out" end
     return ok, loaded
 end
 
----@return table?  nil when this executor can't require it; the failure is warned once
+---@param module Instance
+---@return table?
 function xDTaraZ.GameLib.Require(module)
     local cached = xDTaraZ.GameLib.Loaded[module]
     if cached ~= nil or xDTaraZ.GameLib.Failed[module] then return cached end
 
-    local ok, loaded = pcall(require, module)
+    local result
+    local thread = xDTaraZ.Util.Child(function() result = table.pack(pcall(require, module)) end)
+    local deadline = os.clock() + Config.RequireTimeout
+    while not result and os.clock() < deadline do task.wait() end
+    if not result then
+        pcall(task.cancel, thread)
+        result = { false, "module require timed out" }
+    end
+    local ok, loaded = result[1], result[2]
     if not ok then
         local firstErr = loaded
         ok, loaded = xDTaraZ.GameLib.RequireAsGame(module)
@@ -448,11 +513,12 @@ function xDTaraZ.GameLib.Require(module)
     return loaded
 end
 
----@return boolean, any ...  pcall-style results
+---@param fn function
+---@return boolean, any ...
 function xDTaraZ.GameLib.CallAsGame(fn, ...)
     local args = table.pack(...)
     local box
-    task.defer(function()
+    local thread = xDTaraZ.Util.Child(function()
         pcall(setthreadidentity, 2)
         box = table.pack(pcall(fn, table.unpack(args, 1, args.n)))
     end)
@@ -460,10 +526,12 @@ function xDTaraZ.GameLib.CallAsGame(fn, ...)
     while not box and os.clock() < deadline do
         task.wait()
     end
-    if not box then return false, "game call timed out" end
+    if not box then pcall(task.cancel, thread) return false, "game call timed out" end
     return table.unpack(box, 1, box.n)
 end
 
+---@param fn function
+---@return any ...
 function xDTaraZ.GameLib.Call(fn, ...)
     if not xDTaraZ.GameLib.Deferred[fn] then
         local result = table.pack(pcall(fn, ...))
@@ -478,7 +546,8 @@ function xDTaraZ.GameLib.Call(fn, ...)
     return table.unpack(result, 2, result.n)
 end
 
----@return table  function fields go through GameLib.Call; for helper/controller modules, not config tables
+---@param module Instance
+---@return table
 function xDTaraZ.GameLib.Api(module)
     local api = xDTaraZ.GameLib.Apis[module]
     if api then return api end
@@ -498,7 +567,8 @@ function xDTaraZ.GameLib.Api(module)
     return api
 end
 
----@return table  errors with a readable reason instead of returning nil
+---@param module Instance
+---@return table
 function xDTaraZ.GameLib.Need(module)
     local loaded = xDTaraZ.GameLib.Require(module)
     if loaded == nil then
@@ -507,7 +577,7 @@ function xDTaraZ.GameLib.Need(module)
     return loaded
 end
 
----@param path string  dotted path under ReplicatedStorage, e.g. "Config.Ore.Config"
+---@param path string
 ---@return Instance?
 function xDTaraZ.GameLib.Find(path)
     local node = ReplicatedStorage
@@ -519,7 +589,7 @@ function xDTaraZ.GameLib.Find(path)
     return folder and xDTaraZ.Util.FindRemote(folder, name)
 end
 
----@return table  option idx -> missing paths
+---@return table
 function xDTaraZ.GameLib.Missing()
     local missing = {}
     for idx, paths in pairs(Config.Needs) do
@@ -533,21 +603,52 @@ function xDTaraZ.GameLib.Missing()
     return missing
 end
 
-for _, name in ipairs({ "Util", "Data", "Stage", "Ore", "Spawn", "Potion", "Forge", "Sell", "Gear", "Index", "Level", "Upgrade", "Tower", "Boss", "Season", "Claim", "Bonus", "TokenShop", "Look", "SuperLoot", "Combat", "Guard", "Race", "Movement", "Session", "Scheduler" }) do
+for _, name in ipairs({ "Util", "Data", "Stage", "Ore", "Spawn", "Potion", "Forge", "Sell", "Gear", "Index", "Level", "Upgrade", "Tower", "Boss", "Season", "Claim", "TokenShop", "Look", "SuperLoot", "Combat", "Guard", "Race", "Pet", "Movement", "Session", "Scheduler" }) do
     xDTaraZ[name] = {}
 end
 
----@return Instance?  nil when missing; a renamed folder is searched by remote name
+---@param folder string
+---@param name string
+---@return Instance?
 function xDTaraZ.Util.FindRemote(folder, name)
     if not Remote then return nil end
-    for _, holderName in ipairs({ folder .. "_Server", folder }) do
-        local holder = Remote:FindFirstChild(holderName)
-        local remote = holder and holder:FindFirstChild(name)
-        if remote then return remote end
+    local key = folder .. "." .. name
+    local cached = State.RemoteCache[key]
+    if cached and cached:IsDescendantOf(Remote) then return cached end
+    State.RemoteCache[key] = nil
+
+    local directFolder = Remote:FindFirstChild(folder .. "_Server") or Remote:FindFirstChild(folder)
+    if directFolder then
+        local remote = directFolder:FindFirstChild(name)
+        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+            State.RemoteCache[key] = remote
+            return remote
+        end
     end
-    return Remote:FindFirstChild(name, true)
+
+    for _, descendant in ipairs(Remote:GetDescendants()) do
+        if descendant.Name == name and (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) then
+            local parentName = descendant.Parent and descendant.Parent.Name or ""
+            if parentName:find("^" .. folder) then
+                State.RemoteCache[key] = descendant
+                return descendant
+            end
+        end
+    end
+
+    for _, descendant in ipairs(Remote:GetDescendants()) do
+        if descendant.Name == name and (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) then
+            State.RemoteCache[key] = descendant
+            return descendant
+        end
+    end
+
+    return nil
 end
 
+---@param folder string
+---@param name string
+---@return Instance
 function xDTaraZ.Util.Remote(folder, name)
     local remote = xDTaraZ.Util.FindRemote(folder, name)
     if remote then return remote end
@@ -558,7 +659,8 @@ function xDTaraZ.Util.Remote(folder, name)
     return remote
 end
 
----@return string?, string?  body, or nil + why every transport failed
+---@param url string
+---@return string?, string?
 function xDTaraZ.Util.HttpGet(url)
     local ok, body = pcall(function() return game:HttpGet(url) end)
     if ok and type(body) == "string" then return body end
@@ -573,6 +675,8 @@ function xDTaraZ.Util.HttpGet(url)
     return response.Body
 end
 
+---@param text string
+---@param detail string?
 function xDTaraZ.Util.Alert(text, detail)
     warn("[LootToForge] menu:", text, detail or "")
     task.spawn(function()
@@ -584,7 +688,7 @@ function xDTaraZ.Util.Alert(text, detail)
     end)
 end
 
----@return table?  the UI library, nil after telling the player why
+---@return table?
 function xDTaraZ.Util.LoadLibrary()
     local body, err = xDTaraZ.Util.HttpGet(Config.UiSource)
     if not body or not body:sub(-64):find("return Library%s*$") then
@@ -604,7 +708,8 @@ function xDTaraZ.Util.LoadLibrary()
     return library
 end
 
----Warns a job failure once per Config.WarnCooldown so a feature that flips between failing and succeeding can't flood the console.
+---@param key string
+---@param err any
 function xDTaraZ.Util.WarnJob(key, err)
     local stamp = key .. tostring(err):match("[^\n]*")
     local now = os.clock()
@@ -621,6 +726,8 @@ function xDTaraZ.Util.WarnJob(key, err)
     warn("[LootToForge]", key, err)
 end
 
+---@param fn function
+---@return boolean, any
 function xDTaraZ.Util.Try(fn, ...)
     local ok, err = pcall(fn, ...)
     if not ok then
@@ -629,10 +736,14 @@ function xDTaraZ.Util.Try(fn, ...)
     return ok, err
 end
 
+---@param id string|number
+---@return number
 function xDTaraZ.Util.Tier(id)
     return tonumber(tostring(id):match("%d+")) or 0
 end
 
+---@param number number
+---@return string
 function xDTaraZ.Util.Abbreviate(number)
     local units = { "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp" }
     local index = 1
@@ -643,6 +754,8 @@ function xDTaraZ.Util.Abbreviate(number)
     return (index == 1 and "%d%s" or "%.2f%s"):format(number, units[index])
 end
 
+---@param configTable table
+---@return any
 function xDTaraZ.Util.HighestKey(configTable)
     local bestKey, bestTier = nil, -1
     for key in pairs(configTable) do
@@ -654,20 +767,69 @@ function xDTaraZ.Util.HighestKey(configTable)
     return bestKey
 end
 
-function xDTaraZ.Util.WaitAll(workers, job)
-    local pending = workers
-    for _ = 1, workers do
-        task.spawn(function()
-            xDTaraZ.Util.Try(job)
-            pending -= 1
-        end)
-    end
-    local deadline = os.clock() + Config.RemoteTimeout * 3
-    while pending > 0 and os.clock() < deadline do
-        task.wait(0.1)
-    end
+---@param fn function
+---@return thread
+function xDTaraZ.Util.Child(fn)
+    local owner = coroutine.running()
+    local children = State.ChildThreads[owner]
+    if not children then children = {} State.ChildThreads[owner] = children end
+    local thread
+    thread = task.defer(function()
+        fn()
+        children[thread] = nil
+        if next(children) == nil then State.ChildThreads[owner] = nil end
+    end)
+    children[thread] = true
+    return thread
 end
 
+---@param thread thread
+function xDTaraZ.Util.CancelTree(thread)
+    if not thread then return end
+    for child in pairs(State.ChildThreads[thread] or {}) do xDTaraZ.Util.CancelTree(child) end
+    State.ChildThreads[thread] = nil
+    for _, worker in ipairs(State.WorkerBatches[thread] or {}) do xDTaraZ.Util.CancelTree(worker) end
+    State.WorkerBatches[thread] = nil
+    if State.LockOwner == thread then State.Lock = nil State.LockOwner = nil State.LockTime = 0 end
+    for uuid, owner in pairs(State.LootPending) do
+        if owner == thread then State.LootPending[uuid] = nil State.LootSeen[uuid] = nil end
+    end
+    if coroutine.status(thread) ~= "dead" then pcall(task.cancel, thread) end
+end
+
+---@param workers number
+---@param job function
+---@return boolean
+function xDTaraZ.Util.WaitAll(workers, job)
+    workers = math.max(0, math.floor(workers))
+    local nextJob, pending, firstError = 0, workers, nil
+    local threads = {}
+    local owner = coroutine.running()
+    State.WorkerBatches[owner] = threads
+    for _ = 1, math.min(workers, math.clamp(State.Opt.WorkerLimit, 1, 32)) do
+        table.insert(threads, task.defer(function()
+            while State.Alive and nextJob < workers do
+                nextJob += 1
+                local ok, err = pcall(job)
+                if not ok then firstError = firstError or err end
+                pending -= 1
+            end
+        end))
+    end
+    local deadline = os.clock() + Config.RemoteTimeout * 2
+    while State.Alive and pending > 0 and os.clock() < deadline do
+        task.wait(0.05)
+    end
+    for _, thread in ipairs(threads) do
+        if coroutine.status(thread) ~= "dead" then pcall(task.cancel, thread) end
+    end
+    State.WorkerBatches[owner] = nil
+    if State.Alive and pending > 0 then error("worker batch timed out", 0) end
+    if firstError then error(firstError, 0) end
+    return pending == 0
+end
+
+---@return string[]
 function xDTaraZ.Util.RarityNames()
     local helper = xDTaraZ.GameLib.Api(GameConfig.Rarity.Helper)
     local names = {}
@@ -679,6 +841,8 @@ function xDTaraZ.Util.RarityNames()
     return names
 end
 
+---@param list table
+---@return table
 function xDTaraZ.Util.AllSet(list)
     local set = {}
     for _, name in ipairs(list) do
@@ -687,21 +851,54 @@ function xDTaraZ.Util.AllSet(list)
     return set
 end
 
----@param name string  shown in status while it runs
----@return boolean     false if another long job holds the character
+---@param name string
+---@param fn function
+---@return boolean, any ...
 function xDTaraZ.Util.Exclusive(name, fn, ...)
+    local now = os.clock()
+    if State.Lock and State.LockTime and (now - State.LockTime > 12) then
+        State.Lock = nil
+        State.LockOwner = nil
+    end
     if State.Lock then return false end
+    local owner = coroutine.running()
+    for key, thread in pairs(State.JobRunning) do
+        if thread ~= owner and not xDTaraZ.Scheduler.Groups[key] then return false end
+    end
     State.Lock = name
-    local ok = xDTaraZ.Util.Try(fn, ...)
-    State.Lock = nil
-    return ok
+    State.LockOwner = owner
+    State.LockTime = now
+    local result = table.pack(pcall(fn, ...))
+    if State.LockOwner == owner then
+        State.Lock = nil
+        State.LockOwner = nil
+        State.LockTime = 0
+    end
+    if not result[1] then error(result[2], 0) end
+    return true, table.unpack(result, 2, result.n)
 end
 
-function xDTaraZ.Data.Get()
-    State.Profile = xDTaraZ.Util.Remote("Profile", "GetTotalDataRF"):InvokeServer()
+---@param force boolean?
+---@return table
+function xDTaraZ.Data.Get(force)
+    local now = os.clock()
+    if not force and State.Profile and (now - State.ProfileTime < State.ProfileCacheTtl) then
+        return State.Profile
+    end
+    local remote = xDTaraZ.Util.Remote("Profile", "GetTotalDataRF")
+    local ok, profile = pcall(remote.InvokeServer, remote)
+    if not ok or type(profile) ~= "table" then
+        if State.Profile then return State.Profile end
+        error("profile unavailable; retry after loading", 0)
+    end
+    State.Profile = profile
+    State.ProfileTime = now
     return State.Profile
 end
 
+---@param profile table
+---@param itemId string
+---@return number
 function xDTaraZ.Data.Count(profile, itemId)
     local total = 0
     for _, entry in pairs(profile.Backpack.have) do
@@ -712,6 +909,9 @@ function xDTaraZ.Data.Count(profile, itemId)
     return total
 end
 
+---@param profile table
+---@param itemId string
+---@return string?
 function xDTaraZ.Data.Uuid(profile, itemId)
     for uuid, entry in pairs(profile.Backpack.have) do
         if entry.ID == itemId and (entry.Number or 0) >= 1 then
@@ -721,6 +921,7 @@ function xDTaraZ.Data.Uuid(profile, itemId)
     return nil
 end
 
+---@return table
 function xDTaraZ.Data.Snapshot()
     local seen = {}
     for uuid in pairs(xDTaraZ.Data.Get().Backpack.have) do
@@ -729,22 +930,27 @@ function xDTaraZ.Data.Snapshot()
     return seen
 end
 
----@return table  { [uuid] = entry } gear that appeared after the snapshot
+---@param before table
+---@return table
 function xDTaraZ.Data.NewGear(before)
     local fresh = {}
-    for uuid, entry in pairs(xDTaraZ.Data.Get().Backpack.have) do
-        if not before[uuid] and entry.Type ~= "Ore" and entry.Type ~= "Material" and entry.Type ~= "EnchStone" then
+    for uuid, entry in pairs(xDTaraZ.Data.Get(true).Backpack.have) do
+        if not before[uuid] and (entry.Type == "Weapon" or entry.Type == "Armor" or entry.Type == "Hat") then
             fresh[uuid] = entry
         end
     end
     return fresh
 end
 
+---@param oreId string
+---@return string?
 function xDTaraZ.Ore.Rarity(oreId)
     local oreConfig = xDTaraZ.GameLib.Need(GameConfig.Ore.Config)[oreId]
     return oreConfig and xDTaraZ.GameLib.Api(GameConfig.Rarity.Helper).GetRarityByLevel(oreConfig.Rarity)
 end
 
+---@param profile table
+---@return table[]
 function xDTaraZ.Ore.Owned(profile)
     local ores = {}
     for uuid, entry in pairs(profile.Backpack.have) do
@@ -762,6 +968,7 @@ function xDTaraZ.Ore.Owned(profile)
     return ores
 end
 
+---@return string[]
 function xDTaraZ.Ore.Ids()
     local ids = {}
     for oreId in pairs(xDTaraZ.GameLib.Need(GameConfig.Ore.Config)) do
@@ -771,7 +978,8 @@ function xDTaraZ.Ore.Ids()
     return ids
 end
 
----@return string?, string?  image asset and rarity name from the game's own item tables
+---@param itemId string
+---@return string?, string?
 function xDTaraZ.Look.Item(itemId)
     for _, kind in ipairs(Config.LookKinds) do
         local folder = GameConfig:FindFirstChild(kind)
@@ -785,7 +993,8 @@ function xDTaraZ.Look.Item(itemId)
     return nil, nil
 end
 
----@return Color3?  the colour the game paints this rarity with
+---@param rarity any
+---@return Color3?
 function xDTaraZ.Look.Color(rarity)
     if rarity == nil then return nil end
     State.RarityColors = State.RarityColors or {}
@@ -807,8 +1016,9 @@ function xDTaraZ.Look.Color(rarity)
     return color
 end
 
----@param idOf fun(label: string): string?  item id behind a dropdown label
----@return table, table  label -> image, label -> Color3
+---@param labels string[]
+---@param idOf function
+---@return table, table
 function xDTaraZ.Look.Maps(labels, idOf)
     local images, colors = {}, {}
     for _, label in ipairs(labels) do
@@ -821,6 +1031,7 @@ function xDTaraZ.Look.Maps(labels, idOf)
     return images, colors
 end
 
+---@return string[]
 function xDTaraZ.Ore.Choices()
     local oreShow = xDTaraZ.GameLib.Need(GameConfig.Ore.Show)
     local labels, idByLabel = {}, {}
@@ -836,180 +1047,287 @@ function xDTaraZ.Ore.Choices()
     return labels
 end
 
+---@return string[]
 function xDTaraZ.Ore.ForgeChoices()
     local labels = xDTaraZ.Ore.Choices()
     table.insert(labels, 1, Config.OwnedOresLabel)
     return labels
 end
 
+---@param value any
+---@return number
+function xDTaraZ.Spawn.Amount(value)
+    value = tonumber(value)
+    if not value or value ~= value or value <= 0 or value == math.huge then error("Enter a finite positive amount", 0) end
+    return math.clamp(math.floor(value), 1, 1000000000)
+end
+
+---@param uuid string
+---@param amount number
 function xDTaraZ.Ore.Add(uuid, amount)
-    xDTaraZ.Util.Remote("Backpack", "TrySellItemRE"):FireServer(uuid, -math.abs(amount))
+    xDTaraZ.Util.Remote("Backpack", "TrySellItemRE"):FireServer(uuid, -xDTaraZ.Spawn.Amount(amount))
 end
 
----@param need number  how many must be in the stack afterwards
----@return string?     stack uuid, nil if the ore never dropped
-function xDTaraZ.Ore.Ensure(oreId, need)
-    local profile = xDTaraZ.Data.Get()
-    local uuid = xDTaraZ.Data.Uuid(profile, oreId)
-    if not uuid then
-        if not xDTaraZ.Stage.AcquireOre(oreId) then return nil end
-        task.wait(0.4)
-        profile = xDTaraZ.Data.Get()
-        uuid = xDTaraZ.Data.Uuid(profile, oreId)
-    end
-    if uuid and xDTaraZ.Data.Count(profile, oreId) < need then
-        xDTaraZ.Ore.Add(uuid, math.max(Config.RefillAmount, need))
-        task.wait(0.4)
-    end
-    return uuid
-end
-
-function xDTaraZ.Ore.Top(minimum)
-    local top = xDTaraZ.Ore.Owned(xDTaraZ.Data.Get())[1]
-    if not top then
-        xDTaraZ.Stage.Collect(xDTaraZ.Stage.Best(), nil)
-        top = xDTaraZ.Ore.Owned(xDTaraZ.Data.Get())[1]
-    end
-    if top and top.number < minimum then
-        xDTaraZ.Ore.Add(top.uuid, Config.RefillAmount)
-        task.wait(0.4)
-    end
-    return top
-end
-
+---@return string[]
 function xDTaraZ.Spawn.Choices()
-    local labels, byLabel = xDTaraZ.Ore.Choices(), {}
-    for label, oreId in pairs(State.OreLabels) do
-        byLabel[label] = { id = oreId, kind = "Ore" }
+    local labels, ids = {}, {}
+    local oreShow = xDTaraZ.GameLib.Need(GameConfig.Ore.Show)
+    for _, id in ipairs(xDTaraZ.Ore.Ids()) do
+        local label = "Ore • " .. (oreShow[id] and oreShow[id].DisplayName or id) .. " [" .. id .. "]"
+        labels[#labels + 1] = label
+        ids[label] = { id = id, kind = "Ore" }
     end
-    local stoneShow = xDTaraZ.GameLib.Need(GameConfig.EnchStone.Show)
-    local stones = {}
-    for stoneId in pairs(stoneShow) do
-        table.insert(stones, stoneId)
+
+    local eggFolder = GameConfig:FindFirstChild("Egg")
+    local eggShow = eggFolder and eggFolder:FindFirstChild("Show") and xDTaraZ.GameLib.Require(eggFolder.Show)
+    local eggCfg = eggFolder and eggFolder:FindFirstChild("Config") and xDTaraZ.GameLib.Require(eggFolder.Config)
+    if eggShow or eggCfg then
+        local eggIds = {}
+        local allEggKeys = {}
+        if eggShow then for id in pairs(eggShow) do allEggKeys[id] = true end end
+        if eggCfg then for id in pairs(eggCfg) do allEggKeys[id] = true end end
+        for id in pairs(allEggKeys) do eggIds[#eggIds + 1] = id end
+        table.sort(eggIds, function(a, b) return xDTaraZ.Util.Tier(a) > xDTaraZ.Util.Tier(b) end)
+        for _, id in ipairs(eggIds) do
+            local name = eggShow and eggShow[id] and (eggShow[id].DisplayName or eggShow[id].Name) or id
+            local label = "Egg • " .. name .. " [" .. id .. "]"
+            labels[#labels + 1] = label
+            ids[label] = { id = id, kind = "Egg" }
+        end
     end
-    table.sort(stones, function(a, b)
-        local ta, tb = xDTaraZ.Util.Tier(a), xDTaraZ.Util.Tier(b)
-        if ta ~= tb then return ta > tb end
-        return a < b
-    end)
-    for _, stoneId in ipairs(stones) do
-        local label = stoneShow[stoneId].DisplayName or stoneId
-        byLabel[label] = { id = stoneId, kind = "EnchStone" }
-        table.insert(labels, label)
+
+    local foodFolder = GameConfig:FindFirstChild("Food")
+    local foodShow = foodFolder and foodFolder:FindFirstChild("Show") and xDTaraZ.GameLib.Require(foodFolder.Show)
+    local foodCfg = foodFolder and foodFolder:FindFirstChild("Config") and xDTaraZ.GameLib.Require(foodFolder.Config)
+    if foodShow or foodCfg then
+        local foodIds = {}
+        local allFoodKeys = {}
+        if foodShow then for id in pairs(foodShow) do allFoodKeys[id] = true end end
+        if foodCfg then for id in pairs(foodCfg) do allFoodKeys[id] = true end end
+        for id in pairs(allFoodKeys) do foodIds[#foodIds + 1] = id end
+        table.sort(foodIds, function(a, b) return xDTaraZ.Util.Tier(a) > xDTaraZ.Util.Tier(b) end)
+        for _, id in ipairs(foodIds) do
+            local name = foodShow and foodShow[id] and (foodShow[id].DisplayName or foodShow[id].Name) or id
+            local label = "Fruit • " .. name .. " [" .. id .. "]"
+            labels[#labels + 1] = label
+            ids[label] = { id = id, kind = "Food" }
+        end
     end
-    State.SpawnLabels = byLabel
+
+    local seen = {}
+    local runeShow = xDTaraZ.GameLib.Need(GameConfig.EnchStone.Show)
+    for _, entry in pairs(xDTaraZ.Data.Get().Backpack.have) do
+        if entry.Type == "EnchStone" and not seen[entry.ID] then
+            local id = entry.ID
+            local label = "Rune • " .. (runeShow[id] and runeShow[id].DisplayName or id) .. " [" .. id .. "]"
+            labels[#labels + 1] = label
+            ids[label] = { id = id, kind = "EnchStone" }
+            seen[id] = true
+        end
+    end
+    State.SpawnLabels = ids
     return labels
 end
 
----@return boolean  false if the item was never owned and can't be found
-function xDTaraZ.Spawn.Give(itemId, kind, amount)
+---@param id string
+---@param kind string
+---@param amount number
+---@return boolean, number, string?
+function xDTaraZ.Spawn.Give(id, kind, amount)
+    amount = xDTaraZ.Spawn.Amount(amount)
+    if kind == "Egg" or kind == "Food" then
+        local farmed = xDTaraZ.Stage.FarmTurbo(id, kind, amount)
+        return farmed > 0, farmed, farmed > 0 and "turbo farmed into inventory" or "bag full or drop not rolled yet"
+    end
     if kind == "Ore" then
-        local uuid = xDTaraZ.Ore.Ensure(itemId, 0)
-        if not uuid then return false end
-        xDTaraZ.Ore.Add(uuid, amount)
-        return true
+        local farmed = xDTaraZ.Stage.FarmTurbo(id, "Ore", amount)
+        if farmed > 0 then return true, farmed, "turbo farmed into inventory" end
     end
-    local uuid = xDTaraZ.Data.Uuid(xDTaraZ.Data.Get(), itemId)
-    if not uuid then return false end
+    if kind == "Pet" then
+        local hatched, msg = xDTaraZ.Pet.FarmAndHatchTarget(id, amount)
+        return hatched > 0, hatched, msg or (hatched > 0 and ("hatched target pet x" .. hatched) or "incubating target eggs")
+    end
+    local profile = xDTaraZ.Data.Get()
+    local uuid = xDTaraZ.Data.Uuid(profile, id)
+    if not uuid and kind == "Ore" then uuid = xDTaraZ.Ore.Ensure(id, 0) profile = xDTaraZ.Data.Get(true) end
+    if not uuid then return false, 0, "need an owned copy first" end
+    local before = xDTaraZ.Data.Count(profile, id)
     xDTaraZ.Ore.Add(uuid, amount)
-    return true
-end
-
----@return string[]  potion ids you own at least once (the rest can't be added)
-function xDTaraZ.Potion.Owned()
-    local owned = {}
-    local stock = xDTaraZ.Data.Get().Potion or {}
-    for potionId in pairs(xDTaraZ.GameLib.Need(GameConfig.Potion.Config)) do
-        if stock[potionId] ~= nil then table.insert(owned, potionId) end
+    for _ = 1, 4 do
+        if not State.Alive then return false, 0, "cancelled" end
+        task.wait(0.2)
+        local delta = xDTaraZ.Data.Count(xDTaraZ.Data.Get(true), id) - before
+        if delta > 0 then return true, delta end
     end
-    table.sort(owned)
-    return owned
+    return false, 0, "no increase confirmed"
 end
 
-function xDTaraZ.Potion.Add(potionId, amount)
-    xDTaraZ.Util.Remote("Potion", "TryUsePotionRE"):FireServer(potionId, -math.abs(amount))
-end
-
----@return number  potions boosted for about a year each
-function xDTaraZ.Potion.MaxBuffs()
-    local use = xDTaraZ.Util.Remote("Potion", "TryUsePotionRE")
-    local owned = xDTaraZ.Potion.Owned()
-    for _, potionId in ipairs(owned) do
-        xDTaraZ.Potion.Add(potionId, Config.PotionStack)
-        use:FireServer(potionId, Config.PotionStack)
+function xDTaraZ.Spawn.TurboStep()
+    local picked = State.SpawnLabels[State.Opt.SpawnItem]
+    if picked then
+        xDTaraZ.Spawn.Give(picked.id, picked.kind, State.Opt.SpawnAmount or 1000)
+    else
+        xDTaraZ.Stage.FarmEggsAndFood(15)
+        xDTaraZ.Stage.FarmMaxOres(15)
     end
-    return #owned
 end
 
----@return string  a reward key the server hasn't seen yet
-function xDTaraZ.Bonus.Key(rewardId)
-    local pad = table.create(Config.BonusKeyLength)
-    for i = 1, Config.BonusKeyLength do
-        pad[i] = math.random(2) == 1 and " " or "	"
+---@param profile table
+---@return string[]
+function xDTaraZ.Potion.Owned(profile)
+    local ids = {}
+    local config = xDTaraZ.GameLib.Need(GameConfig.Potion.Config)
+    for id, count in pairs(profile.Potion or {}) do
+        if config[id] and type(count) == "number" and count > 0 then ids[#ids + 1] = id end
     end
-    return table.concat(pad) .. rewardId
+    table.sort(ids)
+    return ids
 end
 
----@return boolean  false once the server stops paying repeat claims
-function xDTaraZ.Bonus.Works()
-    if State.BonusWorks ~= nil then return State.BonusWorks end
-    local classStore = xDTaraZ.GameLib.Need(ReplicatedStorage.LocalData.ClassData)
-    local before = classStore.GetLuckTimes()
-    xDTaraZ.Util.Remote("UpdateLog", "TryClaimUPDRewardRE"):FireServer(xDTaraZ.Bonus.Key(Config.BonusRewards.Race.id))
-    local deadline = os.clock() + Config.RaceResultWait * 2
-    repeat task.wait(0.1) until classStore.GetLuckTimes() > before or os.clock() > deadline
-    State.BonusWorks = classStore.GetLuckTimes() > before
-    return State.BonusWorks
-end
-
----@param kind   string  Race, Season or Token
----@param amount number  rolls, tickets or tokens wanted
----@return number        claims sent, 0 when the game no longer pays them
-function xDTaraZ.Bonus.Spawn(kind, amount)
-    if not xDTaraZ.Bonus.Works() then return 0 end
-    local reward = Config.BonusRewards[kind]
-    local claim = xDTaraZ.Util.Remote("UpdateLog", "TryClaimUPDRewardRE")
-    local times = math.clamp(math.ceil(amount / reward.per), 1, Config.BonusMaxClaims)
-    for i = 1, times do
-        claim:FireServer(xDTaraZ.Bonus.Key(reward.id))
-        if i % Config.BonusBatch == 0 then task.wait() end
+---@param amount number
+---@return number
+function xDTaraZ.Potion.Extend(amount)
+    amount = math.min(1000000, xDTaraZ.Spawn.Amount(amount))
+    local config = xDTaraZ.GameLib.Need(GameConfig.Potion.Config)
+    local changed = 0
+    local profile = xDTaraZ.Data.Get()
+    for _, id in ipairs(xDTaraZ.Potion.Owned(profile)) do
+        if not State.Alive then break end
+        local q = xDTaraZ.Data.Get()
+        local buffId = config[id].BuffID
+        local before = (q.Buff or {})[buffId] or 0
+        local count = math.min(amount, math.floor(q.Potion[id] or 0))
+        if count > 0 then
+            xDTaraZ.Util.Remote("Potion", "TryUsePotionRE"):FireServer(id, count)
+            task.wait(0.3)
+            if ((xDTaraZ.Data.Get(true).Buff or {})[buffId] or 0) > before then changed += 1 end
+        end
     end
-    return times
+    return changed
 end
 
----@return number  goods bought this call
+---@param oreId string
+---@param need number
+---@return string?
+function xDTaraZ.Ore.Ensure(oreId, need)
+    local profile = xDTaraZ.Data.Get()
+    local uuid = xDTaraZ.Data.Uuid(profile, oreId)
+    if uuid and xDTaraZ.Data.Count(profile, oreId) >= need then return uuid end
+
+    xDTaraZ.Stage.FarmOreTarget(oreId, math.max(1, need - xDTaraZ.Data.Count(profile, oreId)))
+    profile = xDTaraZ.Data.Get(true)
+    return xDTaraZ.Data.Uuid(profile, oreId)
+end
+
+---@param minimum number
+---@return table?
+function xDTaraZ.Ore.Top(minimum)
+    local top = xDTaraZ.Ore.Owned(xDTaraZ.Data.Get())[1]
+    if not top or top.number < minimum then
+        xDTaraZ.Stage.FarmMaxOres(3)
+        top = xDTaraZ.Ore.Owned(xDTaraZ.Data.Get(true))[1]
+    end
+    return top and top.number >= minimum and top or nil
+end
+
+---@return number
 function xDTaraZ.TokenShop.BuyAll()
     local goodsConfig = xDTaraZ.GameLib.Need(GameConfig.TokenShop.Config)
     local exchange = xDTaraZ.Util.Remote("TokenShop", "ExchangeGoodsRF")
     local profile = xDTaraZ.Data.Get()
+    if State.Opt.TokenReveal then
+        local reveal = xDTaraZ.Util.Remote("TokenShop", "OpenGoodsRE")
+        local opened = false
+        for slot, good in pairs(profile.TokenShop and profile.TokenShop.Goods or {}) do
+            if State.Alive and not good.Open and not good.Exchanged then
+                reveal:FireServer(tostring(slot))
+                opened = true
+            end
+        end
+        if opened then task.wait(0.2) profile = xDTaraZ.Data.Get(true) end
+    end
     local bought = 0
     for slot, good in pairs(profile.TokenShop and profile.TokenShop.Goods or {}) do
+        if not State.Alive then break end
         local entry = goodsConfig[tonumber(slot)] or goodsConfig[tostring(slot)]
         if good.Exchanged or not entry then continue end
+        if State.Opt.TokenSkipOwned and good.IsHave then continue end
+        if next(State.Opt.TokenTargets) and not State.Opt.TokenTargets[tostring(slot)] then continue end
 
-        local short = (entry.Token or 0) - (profile.Token and profile.Token.value or 0)
-        if short > 0 then
-            xDTaraZ.Bonus.Spawn("Token", short + Config.BonusRewards.Token.per)
-            task.wait(1)
-        end
-        exchange:InvokeServer(tostring(slot))
-        bought += 1
-        profile = xDTaraZ.Data.Get()
+        if (profile.Token and profile.Token.value or 0) < (entry.Token or 0) then continue end
+        if not good.Open then continue end
+        local success = exchange:InvokeServer(tostring(slot))
+        profile = xDTaraZ.Data.Get(true)
+        local updated = profile.TokenShop and profile.TokenShop.Goods and profile.TokenShop.Goods[slot]
+        if success == true or (updated and updated.Exchanged) then bought += 1 end
     end
     return bought
 end
 
----@return number  stacks touched
-function xDTaraZ.Spawn.DupeAll(amount)
-    local touched = 0
-    for uuid, entry in pairs(xDTaraZ.Data.Get().Backpack.have) do
-        if type(entry) ~= "table" or not entry.Number or entry.Type == "Material" then continue end
-        touched += 1
-        xDTaraZ.Ore.Add(uuid, amount)
+---@return string[], table
+function xDTaraZ.TokenShop.Choices()
+    local choices, ids = {}, {}
+    for id, entry in pairs(xDTaraZ.GameLib.Need(GameConfig.TokenShop.Config)) do
+        local label = ("%s (%d Token)"):format(entry.DisplayName or entry.MonID or tostring(id), entry.Token or 0)
+        table.insert(choices, label)
+        ids[label] = tostring(id)
     end
-    return touched
+    table.sort(choices)
+    return choices, ids
 end
 
+---@return number
+function xDTaraZ.Claim.CheckIn()
+    local plan = xDTaraZ.GameLib.Api(ReplicatedStorage.LocalData.PlanKData)
+    local data = plan.GetData()
+    local claimed = 0
+    for day, entry in pairs(data.sign or {}) do
+        if not State.Alive then break end
+        if type(entry) == "table" and entry.Sign and not entry.Claim then
+            if plan.TryClaim(tostring(day)) == true then claimed += 1 end
+        end
+    end
+    return claimed
+end
+
+function xDTaraZ.Stage.BattleStep()
+    local fight = LocalPlayer:GetAttribute("IntoFight")
+    if fight and fight ~= "Stage" then return end
+    if not LocalPlayer.Character or LocalPlayer:GetAttribute("Dead") then return end
+    if not fight then
+        local stageId = State.Opt.Stage or xDTaraZ.Stage.Best()
+        if not stageId then return end
+        local manager = LocalPlayer.PlayerScripts:FindFirstChild("Manager")
+        local stageManager = manager and manager:FindFirstChild("StageManager")
+        local module = stageManager and stageManager:FindFirstChild("StageUtils")
+        if not module then error("StageUtils unavailable while loading", 0) end
+        xDTaraZ.GameLib.Api(module).StartFight(stageId)
+    end
+    if State.Alive and State.Opt.AutoBattle then xDTaraZ.Combat.KillAll() end
+end
+
+---@param slot string
+---@return boolean
+function xDTaraZ.Gear.SwitchForm(slot)
+    local profile = xDTaraZ.Data.Get()
+    local uuid = profile.Backpack.equiped[slot]
+    local item = uuid and profile.Backpack.have[uuid]
+    if not item then return false end
+    local config = slot == "Weapon" and GameConfig.Weapon.Show or GameConfig.Armor.Show
+    local show = xDTaraZ.GameLib.Need(config)[item.ID]
+    if not show or not show.Mutant then return false end
+    local wanted = (item.Mutant or show.Mutant) == "A" and "B" or "A"
+    xDTaraZ.GameLib.Api(ReplicatedStorage.LocalData.BackpackData).ChangeEquipmentMutant(uuid, wanted)
+    local deadline = os.clock() + 2
+    repeat
+        task.wait(0.1)
+        local current = xDTaraZ.GameLib.Api(ReplicatedStorage.LocalData.BackpackData).GetItemData(uuid)
+        if current and current.Mutant == wanted then return true end
+    until not State.Alive or os.clock() >= deadline
+    return false
+end
+
+---@return string[]
 function xDTaraZ.Stage.List()
     local stages = {}
     for stageId in pairs(xDTaraZ.GameLib.Api(GameConfig.Stage.Helper).GetStageEnemyConfig()) do
@@ -1019,67 +1337,223 @@ function xDTaraZ.Stage.List()
     return stages
 end
 
+---@return string
 function xDTaraZ.Stage.Best()
-    return xDTaraZ.Stage.List()[1]
+    return xDTaraZ.Stage.List()[1] or "Stage_27"
 end
 
+---@param stageId string
+---@param rarities table?
 function xDTaraZ.Stage.Collect(stageId, rarities)
     local drops = xDTaraZ.Util.Remote("Stage", "StageFinishedRF"):InvokeServer(stageId)
     if type(drops) ~= "table" then return end
+    local getOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
+    local getStone = xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE")
     for uuid, drop in pairs(drops) do
         if type(drop) == "table" then
-            xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE"):FireServer(uuid)
+            if drop.Type == "Material" then
+                getStone:FireServer(uuid)
+            else
+                getOre:InvokeServer(uuid, true)
+            end
         elseif not rarities or rarities[xDTaraZ.Ore.Rarity(drop)] then
-            xDTaraZ.Util.Remote("Stage", "GetOreRF"):InvokeServer(uuid)
+            getOre:InvokeServer(uuid, true)
         end
     end
     xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE"):FireServer()
+    xDTaraZ.Data.Get(true)
 end
 
+---@param stageId string
 function xDTaraZ.Stage.FarmStones(stageId)
+    stageId = stageId or xDTaraZ.Stage.Best()
     local finished = xDTaraZ.Util.Remote("Stage", "StageFinishedRF")
     local pickStone = xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE")
+    local getOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
     xDTaraZ.Util.WaitAll(Config.StoneWorkers, function()
         for _ = 1, Config.StoneCallsPerWorker do
             local drops = finished:InvokeServer(stageId)
             for uuid, drop in pairs(type(drops) == "table" and drops or {}) do
                 if type(drop) == "table" then
-                    pickStone:FireServer(uuid)
+                    if drop.Type == "Material" then
+                        pickStone:FireServer(uuid)
+                    else
+                        getOre:InvokeServer(uuid, true)
+                    end
                 end
             end
         end
     end)
+    xDTaraZ.Data.Get(true)
 end
 
-function xDTaraZ.Stage.AcquireOre(oreId)
-    local stages = xDTaraZ.Stage.List()
-    local known = State.OreStage[oreId]
-    local target = xDTaraZ.Util.Tier(oreId) * #stages / xDTaraZ.Util.Tier(xDTaraZ.Util.HighestKey(xDTaraZ.GameLib.Need(GameConfig.Ore.Config)))
-    table.sort(stages, function(a, b)
-        if a == known or b == known then return a == known end
-        return math.abs(xDTaraZ.Util.Tier(a) - target) < math.abs(xDTaraZ.Util.Tier(b) - target)
-    end)
+---@param targetOreId string
+---@param needed number
+---@return number
+function xDTaraZ.Stage.FarmOreTarget(targetOreId, needed)
+    return xDTaraZ.Stage.FarmTurbo(targetOreId, "Ore", needed)
+end
 
-    local finished = xDTaraZ.Util.Remote("Stage", "StageFinishedRF")
-    local pickOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
-    for round = 1, Config.AcquireRounds do
-        local stageId = stages[(round - 1) % math.min(#stages, 4) + 1]
-        local drops = finished:InvokeServer(stageId)
-        for uuid, drop in pairs(type(drops) == "table" and drops or {}) do
-            if drop == oreId and pickOre:InvokeServer(uuid) then
-                xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE"):FireServer()
-                State.OreStage[oreId] = stageId
-                return true
-            end
+---@param targetId string
+---@param kind string
+---@param needed number
+---@return number
+---@param targetId string?
+---@param kind string
+---@param needed number
+---@return number
+function xDTaraZ.Stage.FarmTurbo(targetId, kind, needed)
+    needed = math.clamp(math.floor(needed or 1), 1, 1000000)
+    local stageId = targetId and State.OreStage[targetId]
+    if not stageId then
+        if kind == "Egg" or (targetId and targetId:find("^Egg")) then
+            stageId = (targetId == "Egg1" and "Stage_10") or "Stage_25"
+        elseif targetId and (targetId == "Food_5" or targetId == "Food_6" or targetId:find("^Food_10")) then
+            stageId = "Stage_27"
+        else
+            stageId = xDTaraZ.Stage.Best()
         end
     end
-    return false
+
+    local finished = xDTaraZ.Util.Remote("Stage", "StageFinishedRF")
+    local getOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
+    local pickStone = xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE")
+    local claimAll = xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE")
+    local got = 0
+
+    local workers = math.clamp(Config.TurboFarmWorkers or 24, 8, 32)
+    local roundsPerWorker = math.clamp(math.ceil(needed / (workers * 2)), 1, 100)
+
+    if kind == "Egg" then
+        xDTaraZ.Pet.TrimEggs(targetId)
+    end
+
+    xDTaraZ.Util.WaitAll(workers, function()
+        for _ = 1, roundsPerWorker do
+            if not State.Alive or got >= needed then break end
+            local drops = finished:InvokeServer(stageId)
+            if type(drops) == "table" then
+                local batchClaims = {}
+                for uuid, drop in pairs(drops) do
+                    if type(drop) == "table" then
+                        if drop.ID then State.OreStage[drop.ID] = stageId end
+                        if drop.Type == "Material" then
+                            pickStone:FireServer(uuid)
+                        elseif not targetId or drop.ID == targetId or kind == "All" or drop.Type == kind then
+                            batchClaims[#batchClaims + 1] = uuid
+                        end
+                    elseif type(drop) == "string" then
+                        State.OreStage[drop] = stageId
+                        if not targetId or drop == targetId or kind == "Ore" or kind == "All" then
+                            batchClaims[#batchClaims + 1] = uuid
+                        end
+                    end
+                end
+                for _, dropUuid in ipairs(batchClaims) do
+                    task.spawn(function()
+                        if getOre:InvokeServer(dropUuid, true) then
+                            got += 1
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+
+    claimAll:FireServer()
+    xDTaraZ.Data.Get(true)
+    return got
+end
+
+---@param targetId string
+---@param kind string
+---@param needed number
+---@return number
+function xDTaraZ.Stage.FarmDropTarget(targetId, kind, needed)
+    return xDTaraZ.Stage.FarmTurbo(targetId, kind, needed)
+end
+
+---@param rounds number?
+---@return number, number
+function xDTaraZ.Stage.FarmEggsAndFood(rounds)
+    rounds = math.clamp(rounds or Config.EggFarmCalls, 1, 100)
+    local stageId = "Stage_25"
+    local finished = xDTaraZ.Util.Remote("Stage", "StageFinishedRF")
+    local getOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
+    local pickStone = xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE")
+    local claimAll = xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE")
+    local eggs, foods = 0, 0
+    xDTaraZ.Pet.TrimEggs("Egg2")
+    xDTaraZ.Util.WaitAll(Config.TurboFarmWorkers or 24, function()
+        for _ = 1, rounds do
+            if not State.Alive then break end
+            local drops = finished:InvokeServer(stageId)
+            if type(drops) == "table" then
+                for uuid, drop in pairs(drops) do
+                    if type(drop) == "table" then
+                        if drop.Type == "Material" then
+                            pickStone:FireServer(uuid)
+                        elseif drop.Type == "Egg" then
+                            task.spawn(function()
+                                if getOre:InvokeServer(uuid, true) then eggs += 1 end
+                            end)
+                        elseif drop.Type == "Food" then
+                            task.spawn(function()
+                                if getOre:InvokeServer(uuid, true) then foods += 1 end
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    claimAll:FireServer()
+    xDTaraZ.Data.Get(true)
+    if State.Opt.AutoDeleteEggs then xDTaraZ.Pet.TrimEggs() end
+    return eggs, foods
+end
+
+---@param rounds number?
+---@return number
+function xDTaraZ.Stage.FarmMaxOres(rounds)
+    rounds = math.clamp(rounds or 20, 1, 100)
+    local stageId = State.Opt.Stage or xDTaraZ.Stage.Best() or "Stage_27"
+    local finished = xDTaraZ.Util.Remote("Stage", "StageFinishedRF")
+    local getOre = xDTaraZ.Util.Remote("Stage", "GetOreRF")
+    local pickStone = xDTaraZ.Util.Remote("Stage", "GetEnhantStoneRE")
+    local claimAll = xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE")
+    local total = 0
+    xDTaraZ.Util.WaitAll(Config.TurboFarmWorkers or 24, function()
+        for _ = 1, rounds do
+            if not State.Alive then break end
+            local drops = finished:InvokeServer(stageId)
+            if type(drops) == "table" then
+                for uuid, drop in pairs(drops) do
+                    if type(drop) == "table" and drop.Type == "Material" then
+                        pickStone:FireServer(uuid)
+                    else
+                        task.spawn(function()
+                            if getOre:InvokeServer(uuid, true) then
+                                total += 1
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+    claimAll:FireServer()
+    xDTaraZ.Data.Get(true)
+    return total
 end
 
 function xDTaraZ.Stage.ExitFight()
-    xDTaraZ.GameLib.Api(LocalPlayer.PlayerScripts.Manager.StageManager.StageUtils).ExitFight(true)
+    pcall(function()
+        xDTaraZ.GameLib.Api(LocalPlayer.PlayerScripts.Manager.StageManager.StageUtils).ExitFight(true)
+    end)
 end
 
+---@return table
 function xDTaraZ.Forge.Target()
     for _, target in ipairs(Config.ForgeTargets) do
         if target.name == State.Opt.ForgeTarget then
@@ -1089,10 +1563,18 @@ function xDTaraZ.Forge.Target()
     return Config.ForgeTargets[1]
 end
 
+---@param forgeType string
+---@param oreList table
+---@return any
 function xDTaraZ.Forge.Run(forgeType, oreList)
-    return xDTaraZ.Util.Remote("Forge", "ForgeRF"):InvokeServer({ ConfigType = forgeType, UUIDList = oreList })
+    local res = xDTaraZ.Util.Remote("Forge", "ForgeRF"):InvokeServer({ ConfigType = forgeType, UUIDList = oreList })
+    xDTaraZ.Data.Get(true)
+    return res
 end
 
+---@param profile table
+---@param count number
+---@return table?
 function xDTaraZ.Forge.PickOwned(profile, count)
     local opt = State.Opt
     local candidates = {}
@@ -1117,7 +1599,8 @@ function xDTaraZ.Forge.PickOwned(profile, count)
     return need <= 0 and pick or nil
 end
 
----@return table?  { [uuid] = count }, nil when no ore fits
+---@param count number
+---@return table?
 function xDTaraZ.Forge.Pick(count)
     local oreId = State.OreLabels[State.Opt.ForgeOre]
     if not oreId then
@@ -1127,6 +1610,7 @@ function xDTaraZ.Forge.Pick(count)
     return uuid and { [uuid] = count }
 end
 
+---@return boolean
 function xDTaraZ.Forge.Once()
     local target = xDTaraZ.Forge.Target()
     local pick = xDTaraZ.Forge.Pick(target.ores)
@@ -1167,13 +1651,16 @@ function xDTaraZ.Forge.Step()
     xDTaraZ.Sell.Fresh(fresh, keep)
 end
 
+---@param entry table
+---@return string?
 function xDTaraZ.Sell.Rarity(entry)
     local folder = entry.Type == "Weapon" and "Weapon" or "Armor"
     local itemConfig = xDTaraZ.GameLib.Need(GameConfig[folder].Config)[entry.ID]
     return itemConfig and itemConfig.Rarity
 end
 
----@return table<string, boolean>  uuids of the strongest normal piece per slot, which exclusive gear takes its power from
+---@param profile table
+---@return table
 function xDTaraZ.Sell.Anchors(profile)
     local anchors, bestPower = {}, {}
     for uuid, entry in pairs(profile.Backpack.have) do
@@ -1201,6 +1688,7 @@ function xDTaraZ.Sell.Anchors(profile)
     return keep
 end
 
+---@param profile table
 function xDTaraZ.Sell.Run(profile)
     local opt = State.Opt
     local equipped = xDTaraZ.Sell.Anchors(profile)
@@ -1225,9 +1713,11 @@ function xDTaraZ.Sell.Run(profile)
             end
         end
     end
+    xDTaraZ.Data.Get(true)
 end
 
----@param keep table?  { [uuid] = true } never sold
+---@param fresh table
+---@param keep table?
 function xDTaraZ.Sell.Fresh(fresh, keep)
     local equipped = xDTaraZ.Sell.Anchors(State.Profile)
     for _, uuid in pairs(State.Profile.Backpack.equiped) do
@@ -1239,13 +1729,15 @@ function xDTaraZ.Sell.Fresh(fresh, keep)
             sell:FireServer(uuid, 1)
         end
     end
+    xDTaraZ.Data.Get(true)
 end
 
----@param atTarget boolean?  score as if enhanced to the target, so exclusive gear isn't skipped for a higher-level common piece
----@return number           power from the game's own formula
+---@param entry table
+---@param atTarget boolean?
+---@return number
 function xDTaraZ.Gear.Score(entry, atTarget)
     local balance = xDTaraZ.GameLib.Api(ReplicatedStorage.Utils.BalanceUtils)
-    local backpack = (State.Profile or xDTaraZ.Data.Get()).Backpack
+    local backpack = xDTaraZ.Data.Get().Backpack
     local potential = table.clone(entry)
     if atTarget then potential.Level = math.max(entry.Level or 0, State.Opt.EnhanceTarget) end
     local value = entry.Type == "Weapon" and balance.GetWeaponTrainValue or balance.GetArmorValue
@@ -1254,6 +1746,10 @@ function xDTaraZ.Gear.Score(entry, atTarget)
     return power * (1 + (entry.Level or 0) * 1e-6 + #(entry.EnchanceList or {}) * 1e-9)
 end
 
+---@param profile table
+---@param slot string
+---@param atTarget boolean?
+---@return string?, number
 function xDTaraZ.Gear.BestOwned(profile, slot, atTarget)
     local bestUuid, bestScore = nil, -1
     for uuid, entry in pairs(profile.Backpack.have) do
@@ -1267,7 +1763,7 @@ function xDTaraZ.Gear.BestOwned(profile, slot, atTarget)
     return bestUuid, bestScore
 end
 
----@return number  slots changed
+---@return number
 function xDTaraZ.Gear.EquipBest()
     local profile = xDTaraZ.Data.Get()
     local equip = xDTaraZ.Util.Remote("Backpack", "TryEquipItemRE")
@@ -1282,6 +1778,7 @@ function xDTaraZ.Gear.EquipBest()
             changed += 1
         end
     end
+    if changed > 0 then xDTaraZ.Data.Get(true) end
     return changed
 end
 
@@ -1299,10 +1796,13 @@ function xDTaraZ.Gear.ForgeBest()
             xDTaraZ.Util.Remote("Backpack", "TryEquipItemRE"):FireServer(best, spec.slot)
         end
     end
-    task.wait(1)
+    task.wait(0.5)
     xDTaraZ.Sell.Fresh(xDTaraZ.Data.NewGear(before))
 end
 
+---@param profile table
+---@param level number
+---@return string?
 function xDTaraZ.Gear.MissingForEnhance(profile, level)
     local cost = xDTaraZ.GameLib.Need(GameConfig.Enhant.Config)[level + 1]
     if not cost then return nil end
@@ -1312,6 +1812,7 @@ function xDTaraZ.Gear.MissingForEnhance(profile, level)
     return nil
 end
 
+---@param missing string
 function xDTaraZ.Gear.Gather(missing)
     State.GearNote = missing
     if missing == "Coin" then
@@ -1324,7 +1825,7 @@ function xDTaraZ.Gear.Gather(missing)
     end
 end
 
----@return string[]  every rune the game has from RuneMinTier up, strongest tier first
+---@return string[]
 function xDTaraZ.Gear.RuneOrder()
     if State.Runes then return State.Runes end
     local show = xDTaraZ.GameLib.Find("Config.EnchStone.Show")
@@ -1350,19 +1851,13 @@ function xDTaraZ.Gear.RuneOrder()
     return runes
 end
 
+---@return string[]
 function xDTaraZ.Gear.Priority()
     return #State.Opt.EnchantPriority > 0 and State.Opt.EnchantPriority or xDTaraZ.Gear.RuneOrder()
 end
 
-function xDTaraZ.Gear.StockEnchants(profile)
-    for _, stoneId in ipairs(xDTaraZ.Gear.Priority()) do
-        local uuid = xDTaraZ.Data.Uuid(profile, stoneId)
-        if uuid and xDTaraZ.Data.Count(profile, stoneId) < Config.EnchantRefill then
-            xDTaraZ.Ore.Add(uuid, Config.EnchantRefill)
-        end
-    end
-end
-
+---@param profile table
+---@param uuid string
 function xDTaraZ.Gear.Enchant(profile, uuid)
     local entry = profile.Backpack.have[uuid]
     local used = {}
@@ -1381,15 +1876,17 @@ function xDTaraZ.Gear.Enchant(profile, uuid)
             if wanted ~= currentId then
                 if currentId then
                     xDTaraZ.Util.Remote("Backpack", "UnEnchantRE"):FireServer(uuid, slot)
-                    task.wait(0.3)
+                    task.wait(0.04)
                 end
                 xDTaraZ.Util.Remote("Backpack", "EnchantRE"):FireServer(uuid, xDTaraZ.Data.Uuid(profile, wanted), slot)
-                task.wait(0.3)
+                task.wait(0.04)
             end
         end
     end
 end
 
+---@param profile table
+---@return boolean
 function xDTaraZ.Gear.Enhance(profile)
     local target = math.min(State.Opt.EnhanceTarget, xDTaraZ.Util.Tier(xDTaraZ.Util.HighestKey(xDTaraZ.GameLib.Need(GameConfig.Enhant.Config))))
     local enhance = xDTaraZ.Util.Remote("Backpack", "EnhantEquipmentRF")
@@ -1409,6 +1906,7 @@ function xDTaraZ.Gear.Enhance(profile)
                     if not enhance:InvokeServer(uuid, { UseProtect = useProtect }) then return end
                 end
             end)
+            xDTaraZ.Data.Get(true)
             return false
         end
     end
@@ -1423,8 +1921,6 @@ function xDTaraZ.Gear.MaxStep()
     end
     if opt.GearEnchant then
         local profile = xDTaraZ.Data.Get()
-        xDTaraZ.Gear.StockEnchants(profile)
-        profile = xDTaraZ.Data.Get()
         for _, spec in ipairs(Config.GearSlots) do
             local uuid = profile.Backpack.equiped[spec.slot]
             if uuid then xDTaraZ.Gear.Enchant(profile, uuid) end
@@ -1435,7 +1931,9 @@ function xDTaraZ.Gear.MaxStep()
     end
 end
 
----@return number?  level reached, nil if nothing equipped there
+---@param slot string
+---@param target number
+---@return number?
 function xDTaraZ.Gear.EnhanceSlot(slot, target)
     local enhance = xDTaraZ.Util.Remote("Backpack", "EnhantEquipmentRF")
     local failLevel = xDTaraZ.GameLib.Api(GameConfig.Enhant.Helper).GetFailLevel()
@@ -1456,9 +1954,12 @@ function xDTaraZ.Gear.EnhanceSlot(slot, target)
             enhance:InvokeServer(uuid, { UseProtect = level >= failLevel and xDTaraZ.Data.Count(profile, "EnhantProtect") > 0 })
         end
     end
+    xDTaraZ.Data.Get(true)
     return level
 end
 
+---@param profile table
+---@return string
 function xDTaraZ.Gear.EquippedNames(profile)
     local names = {}
     for _, spec in ipairs(Config.GearSlots) do
@@ -1473,6 +1974,7 @@ function xDTaraZ.Gear.EquippedNames(profile)
     return table.concat(names, " · ")
 end
 
+---@return table[]
 function xDTaraZ.Index.GearCatalog()
     local gear = {}
     local armorHelper = xDTaraZ.GameLib.Api(GameConfig.Armor.Helper)
@@ -1485,7 +1987,7 @@ function xDTaraZ.Index.GearCatalog()
     return gear
 end
 
----@return table[]  gear the index still lacks, filtered by IndexTypes
+---@return table[]
 function xDTaraZ.Index.Missing()
     local unlocked = xDTaraZ.Data.Get().Index.unlocked
     local missing = {}
@@ -1501,7 +2003,8 @@ function xDTaraZ.Index.Missing()
     return missing
 end
 
----@return number, string?, number?  chance per forge, ore id, ore count
+---@param gear table
+---@return number, string?, number?
 function xDTaraZ.Index.Plan(gear)
     local cached = State.Plans[gear.id]
     if cached then return cached[1], cached[2], cached[3] end
@@ -1539,6 +2042,8 @@ function xDTaraZ.Index.Plan(gear)
     return bestChance, bestOre, bestCount
 end
 
+---@param gear table
+---@return string
 function xDTaraZ.Index.Label(gear)
     local show = xDTaraZ.GameLib.Need(GameConfig[gear.forgeType].Show)[gear.id]
     local name = ("%s [%s]"):format(show and show.DisplayName or gear.id, gear.slot)
@@ -1547,6 +2052,7 @@ function xDTaraZ.Index.Label(gear)
     return chance > 0 and ("%s - %.2f%%"):format(name, chance * 100) or name .. " - no recipe"
 end
 
+---@return string[]
 function xDTaraZ.Index.Choices()
     local labels, byLabel = {}, {}
     for _, gear in ipairs(xDTaraZ.Index.Missing()) do
@@ -1558,8 +2064,9 @@ function xDTaraZ.Index.Choices()
     return labels
 end
 
----@param copies number?  keep forging until this many new copies, ignoring the index
----@return boolean        true once the index has it, or all copies were made
+---@param gear table
+---@param copies number?
+---@return boolean
 function xDTaraZ.Index.Hunt(gear, copies)
     local chance, oreId, count = xDTaraZ.Index.Plan(gear)
     if chance <= 0 then return false end
@@ -1597,8 +2104,8 @@ function xDTaraZ.Index.Hunt(gear, copies)
     return false
 end
 
----@param slot string  "Weapon", "Armor" or "Hat"
----@return string[]    every forgeable piece of that slot, strongest first
+---@param slot string
+---@return string[]
 function xDTaraZ.Spawn.GearChoices(slot)
     local labels, byLabel, list = {}, {}, {}
     for _, gear in ipairs(xDTaraZ.Index.GearCatalog()) do
@@ -1617,8 +2124,7 @@ function xDTaraZ.Spawn.GearChoices(slot)
     return labels
 end
 
----@return number, number  found, tried
----@return number  pieces spawned, one per slot at most
+---@return number
 function xDTaraZ.Spawn.BestSet()
     local made = 0
     for _, slot in ipairs(Config.GearTypes) do
@@ -1637,6 +2143,29 @@ function xDTaraZ.Spawn.BestSet()
     return made
 end
 
+---@return number
+function xDTaraZ.Spawn.FullGodSet()
+    local made = xDTaraZ.Spawn.BestSet()
+    xDTaraZ.Stage.FarmStones(xDTaraZ.Stage.Best())
+    local profile = xDTaraZ.Data.Get(true)
+    xDTaraZ.Gear.EquipBest()
+    profile = xDTaraZ.Data.Get(true)
+    for _ = 1, 10 do
+        if not State.Alive or xDTaraZ.Gear.Enhance(profile) then break end
+        profile = xDTaraZ.Data.Get(true)
+        task.wait(0.2)
+    end
+    for _, spec in ipairs(Config.GearSlots) do
+        local uuid = profile.Backpack.equiped[spec.slot]
+        if uuid then
+            xDTaraZ.Gear.Enchant(profile, uuid)
+            xDTaraZ.Util.Remote("Backpack", "SetLockRE"):FireServer(uuid, true)
+        end
+    end
+    return made
+end
+
+---@return number, number
 function xDTaraZ.Index.HuntAll()
     local found, tried = 0, 0
     for _, gear in ipairs(xDTaraZ.Index.Missing()) do
@@ -1673,6 +2202,7 @@ function xDTaraZ.Index.ClaimAll()
     end
 end
 
+---@return number, number
 function xDTaraZ.Index.Progress()
     local index = xDTaraZ.Data.Get().Index
     local unlocked = 0
@@ -1682,8 +2212,8 @@ function xDTaraZ.Index.Progress()
     return unlocked, index.level
 end
 
----@param gen number  State.TrainGen at the start; a newer one aborts the search
----@return number?    area entered, nil when none accepted or AutoTrain was toggled meanwhile
+---@param gen number
+---@return number?
 function xDTaraZ.Level.FindBestArea(gen)
     local areas = xDTaraZ.GameLib.Need(GameConfig.TrainArea.Config)
     local ids = {}
@@ -1734,7 +2264,6 @@ function xDTaraZ.Level.Enter()
     end
 end
 
----Exits the training area and keeps resending until the server drops it; stops if AutoTrain is turned back on or the hub unloaded.
 function xDTaraZ.Level.Leave()
     local exit = xDTaraZ.Util.Remote("Train", "ExitAutoTrainRE")
     for _ = 1, Config.TrainExitTries do
@@ -1753,9 +2282,9 @@ function xDTaraZ.Level.Leave()
             return
         end
     end
-    warn("[LootToForge] training area still set after", Config.TrainExitTries, "exits")
 end
 
+---@param enabled boolean
 function xDTaraZ.Level.SetTraining(enabled)
     State.TrainGen += 1
     if enabled then
@@ -1776,6 +2305,7 @@ function xDTaraZ.Level.Bind()
     end))
 end
 
+---@param profile table
 function xDTaraZ.Level.UsePotions(profile)
     local potionConfig = xDTaraZ.GameLib.Need(GameConfig.Potion.Config)
     local now = workspace:GetAttribute("ServerTime") or os.time()
@@ -1809,6 +2339,7 @@ end
 
 function xDTaraZ.Level.Rebirth()
     xDTaraZ.Util.Remote("Rebirth", "TryRebirthRE"):FireServer()
+    xDTaraZ.Data.Get(true)
 end
 
 function xDTaraZ.Level.RebirthStep()
@@ -1834,6 +2365,7 @@ function xDTaraZ.Level.StartClicking()
     end)
 end
 
+---@return string[]
 function xDTaraZ.Upgrade.Names()
     local names = {}
     for name in pairs(xDTaraZ.GameLib.Need(GameConfig.Upgrade.Config)) do
@@ -1848,15 +2380,17 @@ function xDTaraZ.Upgrade.BuySelected()
     for name, selected in pairs(State.Opt.Upgrades) do
         if selected then buy:FireServer(name) end
     end
+    xDTaraZ.Data.Get(true)
 end
 
----@return number  highest floor that still has a loot table
+---@return number
 function xDTaraZ.Tower.LastRound()
     return #xDTaraZ.GameLib.Need(GameConfig.Dungeon.Config.LootTab)
 end
 
+---@return boolean
 function xDTaraZ.Tower.Enter()
-    local deadline = os.clock() + 10
+    local deadline = os.clock() + 5
     while State.Entering and os.clock() < deadline do
         task.wait(0.1)
     end
@@ -1876,6 +2410,7 @@ function xDTaraZ.Tower.Exit()
     xDTaraZ.Util.Remote("Dungeon", "ExitDungeonRE"):FireServer()
 end
 
+---@return boolean
 function xDTaraZ.Tower.FarmStep()
     if not xDTaraZ.Tower.Enter() then return false end
     local round = xDTaraZ.Tower.LastRound()
@@ -1889,31 +2424,44 @@ function xDTaraZ.Tower.FarmStep()
             end
         end
     end)
+    xDTaraZ.Data.Get(true)
     return true
 end
 
----@return number  season coins gained
+---@param target number
+---@return number
 function xDTaraZ.Tower.FarmCoins(target)
+    target = math.clamp(target or 10000, 100, 1000000)
     local start = (xDTaraZ.Season.Current() or {}).SeasonCoin or 0
+    if not xDTaraZ.Tower.Enter() then return 0 end
+    local round = xDTaraZ.Tower.LastRound()
+    local startRE = xDTaraZ.Util.Remote("Dungeon", "StartRoundRE")
+    local completeRF = xDTaraZ.Util.Remote("Dungeon", "CompleteRoundRF")
     local deadline = os.clock() + Config.CoinFarmTimeout
     local gained = 0
-    while gained < target and os.clock() < deadline do
-        if not State.InTower and xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "Dungeon_Ticket") < 1 then break end
-        if not xDTaraZ.Tower.FarmStep() then break end
+    while State.Alive and gained < target and os.clock() < deadline do
+        startRE:FireServer(round)
+        for _ = 1, 15 do
+            if not State.Alive then break end
+            local res = completeRF:InvokeServer(round)
+            if res then State.TowerLoot += 1 end
+        end
+        xDTaraZ.Data.Get(true)
         gained = ((xDTaraZ.Season.Current() or {}).SeasonCoin or 0) - start
+        task.wait(0.05)
     end
     xDTaraZ.Tower.Exit()
-    return gained
+    return math.max(0, gained)
 end
 
----@return string?  basic attack id of the equipped weapon, nil for an unknown weapon type
+---@return string?
 function xDTaraZ.Boss.AttackId()
     local weapon = LocalPlayer:GetAttribute("WeaponType")
-    return Config.BossAttackIds[weapon]
+    return Config.BossAttackIds[weapon] or "G_ATK_1"
 end
 
 function xDTaraZ.Boss.Join()
-    xDTaraZ.Util.Remote("WorldBoss", "IntoWorldBossFight"):FireServer()
+    xDTaraZ.Util.Remote("WorldBoss", "IntoWorldBossFightRE"):FireServer()
     local char = LocalPlayer.Character
     if char and not State.BossReturn then State.BossReturn = char:GetPivot() end
 end
@@ -1938,15 +2486,17 @@ function xDTaraZ.Boss.Step()
         task.wait(Config.BossJoinSettle)
     end
 
-    local boss = workspace.EnemyFolder_Server:FindFirstChild(bossName)
+    local folder = workspace:FindFirstChild("EnemyFolder_Server")
+    local boss = folder and folder:FindFirstChild(bossName)
     if not boss or boss:GetAttribute("Dead") then return end
     xDTaraZ.Boss.StandNear(boss)
     local announce = xDTaraZ.Util.Remote("Attack", "UseAnyATKRE")
     local attack = xDTaraZ.Util.Remote("Attack", "AttackEnemyServiceRE")
     for _ = 1, Config.BossHitsPerTick do
-        if not (State.Opt.AutoWorldBoss and boss.Parent) then return end
-        announce:FireServer(attackId, workspace:GetServerTimeNow())
-        attack:FireServer({ bossName }, { Phase = 1, SkillID = attackId, Attacker = LocalPlayer }, workspace:GetServerTimeNow())
+        if not (State.Alive and State.Opt.AutoWorldBoss and boss.Parent) or boss:GetAttribute("Dead") then return end
+        local timestamp = workspace:GetServerTimeNow()
+        announce:FireServer(attackId, timestamp)
+        attack:FireServer({ bossName }, { Phase = 1, SkillID = attackId, Attacker = LocalPlayer }, timestamp)
         task.wait(Config.BossHitGap)
     end
 end
@@ -1959,7 +2509,7 @@ function xDTaraZ.Boss.ClaimCards()
 end
 
 function xDTaraZ.Boss.Leave()
-    xDTaraZ.Util.Remote("WorldBoss", "ExitWorldBossFight"):FireServer()
+    xDTaraZ.Util.Remote("WorldBoss", "ExitWorldBossFightRE"):FireServer()
     LocalPlayer:SetAttribute("IntoFight", nil)
     local char = LocalPlayer.Character
     if State.BossReturn and char then char:PivotTo(State.BossReturn) end
@@ -1983,12 +2533,15 @@ function xDTaraZ.Boss.Bind()
     end))
 end
 
+---@return table?
 function xDTaraZ.Season.Current()
     local seasons = xDTaraZ.Data.Get().Season or {}
+    if seasons.Season1 then return seasons.Season1 end
     local bestKey = xDTaraZ.Util.HighestKey(seasons)
-    return bestKey and seasons[bestKey]
+    return bestKey and seasons[bestKey] or seasons[next(seasons)]
 end
 
+---@return string[], table
 function xDTaraZ.Season.Goods()
     local goods = xDTaraZ.GameLib.Need(GameConfig.Season.GoodsConfig)
     local ids = {}
@@ -2006,21 +2559,26 @@ function xDTaraZ.Season.Goods()
     return labels, byLabel
 end
 
----@return number  exclusive gear bought, farming the coins first when short
+---@return number
 function xDTaraZ.Season.BuyExclusive()
     local goods = xDTaraZ.GameLib.Need(GameConfig.Season.GoodsConfig)
     local exchange = xDTaraZ.Util.Remote("Season", "ExchangeGoodsRE")
     local bought = 0
     for goodId, good in pairs(goods) do
+        if not State.Alive then break end
         if good.Type ~= "Weapon" and good.Type ~= "Armor" and good.Type ~= "Hat" then continue end
         local season = xDTaraZ.Season.Current()
-        if not season or ((season.Goods or {})[goodId] or 0) >= (good.Store or 1) then continue end
+        local before = season and ((season.Goods or {})[goodId] or 0) or 0
+        if not season or before >= (good.Store or 1) then continue end
         local short = good.NeedSeasonCoin - (season.SeasonCoin or 0)
-        if short > 0 then xDTaraZ.Tower.FarmCoins(short) end
+        if short > 0 then xDTaraZ.Tower.FarmCoins(short) season = xDTaraZ.Season.Current() end
+        if not season or (season.SeasonCoin or 0) < good.NeedSeasonCoin then continue end
         exchange:FireServer(goodId)
-        bought += 1
-        task.wait(0.5)
+        task.wait(0.3)
+        local updated = xDTaraZ.Season.Current()
+        if updated and ((updated.Goods or {})[goodId] or 0) > before then bought += 1 end
     end
+    xDTaraZ.Data.Get(true)
     return bought
 end
 
@@ -2031,31 +2589,41 @@ function xDTaraZ.Season.BuyGoods()
         local good = goods[goodId]
         if not (wanted and good) then continue end
         for _ = 1, good.Store or 1 do
+            if not State.Alive then return end
             local season = xDTaraZ.Season.Current()
-            if not season or (season.SeasonCoin or 0) < good.NeedSeasonCoin then break end
+            local count = season and ((season.Goods or {})[goodId] or 0) or 0
+            if not season or count >= (good.Store or 1) or (season.SeasonCoin or 0) < good.NeedSeasonCoin then break end
             exchange:FireServer(goodId)
-            task.wait(0.3)
+            task.wait(0.2)
+            local updated = xDTaraZ.Season.Current()
+            if not updated or ((updated.Goods or {})[goodId] or 0) <= count then break end
         end
     end
+    xDTaraZ.Data.Get(true)
 end
 
 function xDTaraZ.Season.Step()
     xDTaraZ.Util.Remote("Season", "TryClaimDailyTicRE"):FireServer()
     xDTaraZ.Util.Remote("Season", "TryClaimAllRewardRE"):FireServer()
-    task.wait(0.5)
+    task.wait(0.3)
     xDTaraZ.Season.BuyGoods()
     local season = xDTaraZ.Season.Current()
     if not (season and State.Opt.SeasonSpin) then return end
     local luck = xDTaraZ.Util.Remote("Season", "LuckRE")
-    for _ = 1, season.SeasonTicket or 0 do
+    for _ = 1, math.min(season.SeasonTicket or 0, math.clamp(State.Opt.SeasonSpinBatch, 1, 50)) do
+        if not State.Alive or not State.Opt.AutoSeason or not State.Opt.SeasonSpin then break end
         luck:FireServer(1)
-        task.wait(0.5)
+        task.wait(0.3)
     end
 end
 
 function xDTaraZ.Claim.All()
     xDTaraZ.Util.Remote("Offline", "TryClaimOfflineRewardRE"):FireServer()
     xDTaraZ.Util.Remote("Dungeon", "TryClaimDailyDunTicRE"):FireServer()
+    xDTaraZ.Util.Remote("Season", "TryClaimDailyTicRE"):FireServer()
+    xDTaraZ.Util.Remote("Season", "TryClaimAllRewardRE"):FireServer()
+    xDTaraZ.Util.Remote("Player", "TryJoinGroupRE"):FireServer()
+    xDTaraZ.Util.Try(xDTaraZ.Claim.CheckIn)
     xDTaraZ.Util.Try(xDTaraZ.Index.ClaimAll)
 
     local claimQuest = xDTaraZ.Util.Remote("EnhantEvent", "TryClaimQuestRE")
@@ -2069,9 +2637,11 @@ function xDTaraZ.Claim.All()
     for rewardName in pairs(ok and type(rewards) == "table" and rewards or {}) do
         xDTaraZ.Util.Remote("Online", "TryClaimRE"):FireServer(rewardName)
     end
+    xDTaraZ.Data.Get(true)
 end
 
----@return string  the server's message for this code ("no reply" when it stayed silent)
+---@param code string
+---@return string
 function xDTaraZ.Claim.Code(code)
     local message
     local hasListener, messageEvent = pcall(xDTaraZ.Util.Remote, "Message", "MessageRE")
@@ -2088,6 +2658,7 @@ function xDTaraZ.Claim.Code(code)
     return message or "no reply"
 end
 
+---@return string
 function xDTaraZ.Claim.AllCodes()
     local results = {}
     for _, code in ipairs(Config.Codes) do
@@ -2096,39 +2667,161 @@ function xDTaraZ.Claim.AllCodes()
     return table.concat(results, "\n")
 end
 
+---@param uuid string
+---@return boolean
 function xDTaraZ.SuperLoot.Kill(uuid)
-    xDTaraZ.Util.Remote("SuperLoot", "KillSuperLootRE"):FireServer(uuid)
-    task.wait(0.2)
-    xDTaraZ.Util.Remote("Stage", "GetOreRF"):InvokeServer(uuid)
-    xDTaraZ.Util.Remote("Stage", "ClaimedAllOreRE"):FireServer()
+    if type(uuid) ~= "string" or State.LootPending[uuid] then return false end
+    local folder = workspace:FindFirstChild("EnemyFolder") or workspace:FindFirstChild("EnemyFolder_Server")
+    local enemy = folder and folder:FindFirstChild(uuid)
+    local hp = enemy and enemy:FindFirstChild("HPValue")
+    if not hp or type(hp.Value) ~= "number" then return false end
+
+    State.LootPending[uuid] = coroutine.running()
+    local ok, claimed = pcall(function()
+        local hit = xDTaraZ.GameLib.Api(ReplicatedStorage.Utils.CommunicationUtils).TryGetBindableEvent("Attack", "EnemyHitBE")
+        if not hit or not hit:IsA("BindableEvent") then error("EnemyHitBE unavailable", 0) end
+        local attackId = xDTaraZ.Boss.AttackId() or "G_ATK_1"
+        local info = { SkillID = attackId, IsCrit = State.Opt.AuraCritical, Damage = State.Opt.AuraDamage }
+        local rounds = math.min(50, math.max(1, math.ceil(hp.Value)))
+        for _ = 1, rounds do
+            if not State.Alive then return false end
+            hit:Fire(uuid, State.Opt.AuraDamage, info)
+        end
+        task.wait(0.1)
+        local superKill = xDTaraZ.Util.FindRemote("SuperLoot", "KillSuperLootRE")
+        if superKill then superKill:FireServer(uuid) end
+        task.wait(0.15)
+        local getOre = xDTaraZ.Util.FindRemote("Stage", "GetOreRF")
+        if getOre then getOre:InvokeServer(uuid) end
+        local claimAll = xDTaraZ.Util.FindRemote("Stage", "ClaimedAllOreRE")
+        if claimAll then claimAll:FireServer() end
+        return true
+    end)
+    State.LootPending[uuid] = nil
+    if not ok then error(claimed, 0) end
+    return claimed
 end
 
 function xDTaraZ.SuperLoot.KillExisting()
-    for _, enemy in ipairs(workspace.EnemyFolder:GetChildren()) do
-        local enemyId = enemy:GetAttribute("EnemyID")
-        if enemyId and enemyId:find("^Super") then
-            task.spawn(xDTaraZ.Util.Try, xDTaraZ.SuperLoot.Kill, enemy.Name)
+    local folders = { workspace:FindFirstChild("EnemyFolder"), workspace:FindFirstChild("EnemyFolder_Server") }
+    for _, folder in ipairs(folders) do
+        if not folder then continue end
+        for _, enemy in ipairs(folder:GetChildren()) do
+            local enemyId = enemy:GetAttribute("EnemyID")
+            if type(enemyId) == "string" and enemyId:find("^Super") then
+                xDTaraZ.SuperLoot.Queue(enemy.Name)
+            end
         end
     end
+end
+
+---@param uuid string
+function xDTaraZ.SuperLoot.Queue(uuid)
+    if not State.Alive or type(uuid) ~= "string" or State.LootSeen[uuid] then return end
+    if #State.LootQueue >= 256 then return end
+    State.LootSeen[uuid] = true
+    table.insert(State.LootQueue, uuid)
+end
+
+function xDTaraZ.SuperLoot.Step()
+    local uuid = table.remove(State.LootQueue, 1)
+    if not uuid then return end
+    xDTaraZ.SuperLoot.Kill(uuid)
 end
 
 function xDTaraZ.SuperLoot.Bind()
     table.insert(State.Conns, xDTaraZ.Util.Remote("SuperLoot", "RefreshSuperLootRE").OnClientEvent:Connect(function(_, uuid)
         if State.Opt.SuperLootAura then
-            task.spawn(xDTaraZ.Util.Try, xDTaraZ.SuperLoot.Kill, uuid)
+            xDTaraZ.SuperLoot.Queue(uuid)
         end
     end))
+    local folder = workspace:FindFirstChild("EnemyFolder")
+    if folder then
+        table.insert(State.Conns, folder.ChildRemoved:Connect(function(enemy)
+            State.LootSeen[enemy.Name] = nil
+            State.LootPending[enemy.Name] = nil
+        end))
+    end
 end
 
+---@return number
 function xDTaraZ.Combat.KillAll()
     local hit = xDTaraZ.GameLib.Api(ReplicatedStorage.Utils.CommunicationUtils).TryGetBindableEvent("Attack", "EnemyHitBE")
-    local hitInfo = { SkillID = "K_ATK_1", IsCrit = true, Damage = Config.KillDamage }
-    for _, enemy in ipairs(workspace.EnemyFolder:GetChildren()) do
-        local enemyId = enemy:GetAttribute("EnemyID")
-        if enemyId and not enemyId:find("^Super") then
-            hit:Fire(enemy.Name, Config.KillDamage, hitInfo)
+    if not hit or not hit:IsA("BindableEvent") then error("EnemyHitBE unavailable", 0) end
+
+    local damage = State.Opt.AuraDamage
+    local weaponType = LocalPlayer:GetAttribute("WeaponType")
+    local attackId = Config.BossAttackIds[weaponType] or "K_ATK_1"
+    local hitInfo = { SkillID = attackId, IsCrit = State.Opt.AuraCritical, Damage = damage }
+
+    local char = LocalPlayer.Character
+    local origin = char and char:GetPivot().Position
+    local mapWide = State.Opt.AuraMapWide or (State.Opt.AuraRange == 0)
+    local range = State.Opt.AuraRange
+    local burst = math.clamp(State.Opt.AuraBurst or 10, 1, 50)
+    local targetFilter = State.Opt.AuraTarget or "All"
+
+    local killed = 0
+    local announce = xDTaraZ.Util.FindRemote("Attack", "UseAnyATKRE")
+    local attackService = xDTaraZ.Util.FindRemote("Attack", "AttackEnemyServiceRE")
+    local killEnemy = xDTaraZ.Util.FindRemote("Attack", "KillEnemyRE")
+    local killSuper = xDTaraZ.Util.FindRemote("SuperLoot", "KillSuperLootRE")
+    local getOre = xDTaraZ.Util.FindRemote("Stage", "GetOreRF")
+    local pickStone = xDTaraZ.Util.FindRemote("Stage", "GetEnhantStoneRE")
+
+    local folders = { workspace:FindFirstChild("EnemyFolder"), workspace:FindFirstChild("EnemyFolder_Server") }
+    for _, folder in ipairs(folders) do
+        if not folder then continue end
+        local children = folder:GetChildren()
+        for _, enemy in ipairs(children) do
+            if not State.Alive or not (State.Opt.KillAura or State.Opt.AutoBattle) then return killed end
+            local enemyId = tostring(enemy:GetAttribute("EnemyID") or "")
+            local isSuper = enemyId:find("^Super") ~= nil
+            local isBoss = folder.Name == "EnemyFolder_Server"
+
+            if targetFilter == "Normal" and (isSuper or isBoss) then continue end
+            if targetFilter == "Super" and not isSuper then continue end
+            if targetFilter == "Boss" and not isBoss then continue end
+
+            local hp = enemy:FindFirstChild("HPValue")
+            if hp and type(hp.Value) == "number" and hp.Value <= 0 then continue end
+            if enemy:GetAttribute("Dead") == true then continue end
+
+            if not mapWide and origin and enemy:IsA("Model") then
+                if (enemy:GetPivot().Position - origin).Magnitude > range then continue end
+            end
+
+            local name = enemy.Name
+            local hitRounds = isSuper and math.min(burst, math.max(1, math.ceil(hp and hp.Value or 10))) or 1
+            for _ = 1, hitRounds do
+                hit:Fire(name, damage, hitInfo)
+            end
+
+            if announce and attackService then
+                local now = workspace:GetServerTimeNow()
+                pcall(announce.FireServer, announce, attackId, now)
+                pcall(attackService.FireServer, attackService, { name }, { Phase = 1, SkillID = attackId, Attacker = LocalPlayer }, now)
+            end
+
+            if isSuper then
+                if killSuper then pcall(killSuper.FireServer, killSuper, name) end
+                if getOre then pcall(getOre.InvokeServer, getOre, name) end
+            else
+                if killEnemy then pcall(killEnemy.FireServer, killEnemy, name) end
+            end
+
+            killed += 1
+            if killed >= State.Opt.AuraBatch then break end
         end
+        if killed >= State.Opt.AuraBatch then break end
     end
+
+    if State.Opt.AutoCollectDrops then
+        local claimAll = xDTaraZ.Util.FindRemote("Stage", "ClaimedAllOreRE")
+        if claimAll then pcall(claimAll.FireServer, claimAll) end
+    end
+
+    return killed
 end
 
 function xDTaraZ.Combat.Start()
@@ -2136,13 +2829,13 @@ function xDTaraZ.Combat.Start()
     State.AuraLoop = task.defer(function()
         while State.Alive and State.Opt.KillAura do
             xDTaraZ.Scheduler.Run("KillAura", xDTaraZ.Combat.KillAll)
-            task.wait(Config.KillAuraInterval)
+            task.wait(State.Opt.AuraInterval)
         end
         State.AuraLoop = nil
     end)
 end
 
----@return boolean  false when the game's damage function can't be reached
+---@return boolean
 function xDTaraZ.Guard.HookDamage()
     if State.RestoreDamage then return true end
     local hpCtrl = xDTaraZ.GameLib.Require(ReplicatedStorage.CTRL.HPCTRL)
@@ -2160,7 +2853,7 @@ function xDTaraZ.Guard.HookDamage()
     return true
 end
 
----@return boolean  false when the executor can't hook namecall or the remote is missing
+---@return boolean
 function xDTaraZ.Guard.HookOreLoss()
     if State.RestoreNamecall then return true end
     local compat = xDTaraZ.Compat
@@ -2196,6 +2889,7 @@ function xDTaraZ.Guard.Stop()
     xDTaraZ.Guard.UnhookOreLoss()
 end
 
+---@return string[], table
 function xDTaraZ.Race.Choices()
     local classConfig = xDTaraZ.GameLib.Need(GameConfig.Class.Config)
     local show = xDTaraZ.GameLib.Need(GameConfig.Class.Show)
@@ -2214,6 +2908,7 @@ function xDTaraZ.Race.Choices()
     return labels, idByLabel
 end
 
+---@return boolean
 function xDTaraZ.Race.EquipBest()
     local classData = xDTaraZ.Data.Get().Class
     local classConfig = xDTaraZ.GameLib.Need(GameConfig.Class.Config)
@@ -2224,21 +2919,25 @@ function xDTaraZ.Race.EquipBest()
     end
     if not bestSlot or tostring(bestSlot) == tostring(classData.equiped) then return false end
     xDTaraZ.Util.Remote("Class", "ChangeEquipedIndexRE"):FireServer(tostring(bestSlot))
+    xDTaraZ.Data.Get(true)
     return true
 end
 
----@return number  rarity level, 0 when unknown
+---@param rarity any
+---@return number
 function xDTaraZ.Race.RarityLevel(rarity)
     local ok, level = pcall(xDTaraZ.GameLib.Api(GameConfig.Rarity.Helper).GetRarityLevel, rarity)
     return ok and tonumber(level) or 0
 end
 
+---@param classId string
+---@return number
 function xDTaraZ.Race.Level(classId)
     local info = classId and xDTaraZ.GameLib.Need(GameConfig.Class.Config)[classId]
     return info and xDTaraZ.Race.RarityLevel(info.Rarity) or 0
 end
 
----@return string[], table  "Mythic+" style labels, label -> level
+---@return string[], table
 function xDTaraZ.Race.RarityChoices()
     local seen, levels = {}, {}
     for _, info in pairs(xDTaraZ.GameLib.Need(GameConfig.Class.Config)) do
@@ -2256,13 +2955,16 @@ function xDTaraZ.Race.RarityChoices()
     return labels, byLabel
 end
 
----@return number  star level the account has on this race, 0 if never rolled
+---@param classId string
+---@return number
 function xDTaraZ.Race.Stars(classId)
     local record = xDTaraZ.GameLib.Need(ReplicatedStorage.LocalData.ClassData).GetData().recored
     local entry = record and record[classId]
     return entry and tonumber(entry.Level) or 0
 end
 
+---@param classId string
+---@return boolean
 function xDTaraZ.Race.IsGoal(classId)
     if not classId then return false end
     local wanted = State.Opt.RaceTargets[classId]
@@ -2270,7 +2972,8 @@ function xDTaraZ.Race.IsGoal(classId)
     return wanted and xDTaraZ.Race.Stars(classId) >= (State.Opt.RaceStar or 0)
 end
 
----@return string?, string?  slot to roll, or nil + why not
+---@param classData table
+---@return string?, string?
 function xDTaraZ.Race.PickSlot(classData)
     local slot = State.Opt.RaceSlot == "Equipped" and tostring(classData.equiped) or State.Opt.RaceSlot:match("%d+")
     if not (slot and classData.have[slot]) then return nil, "that slot is not unlocked" end
@@ -2278,7 +2981,7 @@ function xDTaraZ.Race.PickSlot(classData)
     return slot
 end
 
----Mutes the game's roll cutscene so rolls run in the background.
+---@param muted boolean
 function xDTaraZ.Race.MuteAnim(muted)
     if not xDTaraZ.Compat.Caps.Connections then return end
     local event = xDTaraZ.Util.Remote("Class", "ShowLuckResultRE").OnClientEvent
@@ -2287,17 +2990,26 @@ function xDTaraZ.Race.MuteAnim(muted)
     end
 end
 
----@return boolean  true when rolls are available
+---@param classStore table
+---@return boolean
 function xDTaraZ.Race.EnsureRolls(classStore)
     if (classStore.GetData().luckTimes or 0) > 0 then return true end
-    if not State.Opt.RaceRefill then return false end
-    xDTaraZ.Bonus.Spawn("Race", Config.RaceRefill)
-    local deadline = os.clock() + Config.RaceResultWait * 2
-    repeat task.wait(0.1) until (classStore.GetData().luckTimes or 0) > 0 or os.clock() > deadline
-    return (classStore.GetData().luckTimes or 0) > 0
+    if not State.Opt.RaceBuyRolls then return false end
+    local config = xDTaraZ.GameLib.Need(GameConfig.Season.GoodsConfig)
+    local season = xDTaraZ.Season.Current()
+    for id, good in pairs(config) do
+        if good.ID == "ClassRoll" and season and (season.SeasonCoin or 0) >= good.NeedSeasonCoin
+            and ((season.Goods or {})[id] or 0) < (good.Store or 1) then
+            xDTaraZ.Util.Remote("Season", "ExchangeGoodsRE"):FireServer(id)
+            local deadline = os.clock() + Config.RaceResultWait * 2
+            repeat task.wait(0.1) until not State.Alive or (classStore.GetData().luckTimes or 0) > 0 or os.clock() >= deadline
+            return (classStore.GetData().luckTimes or 0) > 0
+        end
+    end
+    return false
 end
 
----@return string, string?  got / empty / blocked / stopped, plus detail
+---@return string, string?
 function xDTaraZ.Race.RollUntil()
     local classStore = xDTaraZ.GameLib.Need(ReplicatedStorage.LocalData.ClassData)
     local roll = xDTaraZ.Util.Remote("Class", "LuckOnceRE")
@@ -2327,6 +3039,627 @@ function xDTaraZ.Race.RollUntil()
     return "stopped"
 end
 
+---@param refresh boolean?
+---@return table
+function xDTaraZ.Pet.Store(refresh)
+    local profile = xDTaraZ.Data.Get(refresh)
+    return profile and profile.Pet or {}
+end
+
+---@param petId string
+---@return string?
+function xDTaraZ.Pet.Rarity(petId)
+    local cfg = xDTaraZ.GameLib.Need(GameConfig.Pet.Config)[petId]
+    return cfg and cfg.Rarity
+end
+
+---@param entry table
+---@return number
+function xDTaraZ.Pet.Score(entry)
+    if type(entry) ~= "table" or entry.Type ~= "Pet" then return -1 end
+    local cfg = xDTaraZ.GameLib.Need(GameConfig.Pet.Config)[entry.ID]
+    if not cfg then return 0 end
+    local rarityLv = xDTaraZ.Race.RarityLevel(cfg.Rarity)
+    local boostSum = 0
+    local ok, boosts = pcall(xDTaraZ.GameLib.Api(ReplicatedStorage.Utils.BalanceUtils).GetPetBoosts, entry)
+    if ok and type(boosts) == "table" then
+        for _, val in pairs(boosts) do
+            if type(val) == "number" then boostSum += val end
+        end
+    end
+    local skills = type(entry.ExtraSkill) == "table" and #entry.ExtraSkill or 0
+    return rarityLv * 10000 + boostSum * 1000 + (entry.Level or 1) * 10 + skills * 500 + xDTaraZ.Util.Tier(entry.ID)
+end
+
+function xDTaraZ.Pet.ResetVFX()
+    pcall(function()
+        local gui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        local openGui = gui and gui:FindFirstChild("OpenEggGui")
+        if openGui and openGui.Enabled then
+            local vfx = ReplicatedStorage:FindFirstChild("GuiUtils")
+                and ReplicatedStorage.GuiUtils:FindFirstChild("PetGUI")
+                and ReplicatedStorage.GuiUtils.PetGUI:FindFirstChild("OpenEggVFX")
+            if vfx then xDTaraZ.GameLib.Api(vfx).Reset() end
+        end
+    end)
+end
+
+---@param muted boolean
+function xDTaraZ.Pet.MuteAnim(muted)
+    if xDTaraZ.Compat and xDTaraZ.Compat.Caps.Connections then
+        local remote = xDTaraZ.Util.FindRemote("Pet", "ShowLuckResult")
+        if remote and remote:IsA("RemoteEvent") then
+            for _, conn in ipairs(getconnections(remote.OnClientEvent)) do
+                if muted then conn:Disable() else conn:Enable() end
+            end
+        end
+    end
+    if muted then xDTaraZ.Pet.ResetVFX() end
+end
+
+function xDTaraZ.Pet.Bind()
+    local remote = xDTaraZ.Util.FindRemote("Pet", "ShowLuckResult")
+    if remote and remote:IsA("RemoteEvent") then
+        table.insert(State.Conns, remote.OnClientEvent:Connect(function()
+            if State.Opt.SkipEggAnim then
+                task.defer(xDTaraZ.Pet.ResetVFX)
+                task.delay(0.15, xDTaraZ.Pet.ResetVFX)
+            end
+        end))
+    end
+end
+
+---@param petStore table?
+---@return number, number
+function xDTaraZ.Pet.Counts(petStore)
+    petStore = petStore or xDTaraZ.Pet.Store()
+    local pets, eggs = 0, 0
+    for _, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" then
+            pets += 1
+        elseif entry.Type == "Egg" and not entry.HatchReadyTick then
+            eggs += 1
+        end
+    end
+    return pets, eggs
+end
+
+---@param preferEggId string?
+---@return number
+function xDTaraZ.Pet.TrimEggs(preferEggId)
+    local petStore = xDTaraZ.Pet.Store()
+    local byId, totalEggs = {}, 0
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Egg" and not entry.HatchReadyTick then
+            byId[entry.ID] = byId[entry.ID] or {}
+            table.insert(byId[entry.ID], uuid)
+            totalEggs += 1
+        end
+    end
+    local deleteRE = xDTaraZ.Util.Remote("Pet", "DeleteRE")
+    local deleted = 0
+    local keepLimit = math.max(1, State.Opt.KeepPerEgg or 10)
+    local maxEggs = petStore.maxEggNum or 25
+    for eggId, list in pairs(byId) do
+        local limit = keepLimit
+        if preferEggId and eggId ~= preferEggId and totalEggs >= maxEggs - 3 then
+            limit = math.min(limit, math.max(2, math.floor(maxEggs / 4)))
+        end
+        for i = limit + 1, #list do
+            deleteRE:FireServer(list[i])
+            deleted += 1
+            totalEggs -= 1
+        end
+    end
+    if deleted > 0 then xDTaraZ.Data.Get(true) end
+    return deleted
+end
+
+---@return number, number
+function xDTaraZ.Pet.CleanBag()
+    local petStore = xDTaraZ.Pet.Store()
+    local protected = {}
+    for _, uuid in pairs(petStore.equiped or {}) do
+        protected[uuid] = true
+    end
+    local allPets = {}
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" then
+            if entry.DeployStartTick then protected[uuid] = true end
+            table.insert(allPets, { uuid = uuid, entry = entry, score = xDTaraZ.Pet.Score(entry) })
+        end
+    end
+    table.sort(allPets, function(a, b) return a.score > b.score end)
+    for i = 1, math.min(#allPets, math.max(1, State.Opt.KeepBestPets or 6)) do
+        protected[allPets[i].uuid] = true
+    end
+    local deleteRE = xDTaraZ.Util.Remote("Pet", "DeleteRE")
+    local deletedPets = 0
+    for _, item in ipairs(allPets) do
+        local rarity = xDTaraZ.Pet.Rarity(item.entry.ID)
+        if not protected[item.uuid] and State.Opt.DeletePetRarities[rarity] then
+            deleteRE:FireServer(item.uuid)
+            deletedPets += 1
+        end
+    end
+    local deletedEggs = State.Opt.AutoDeleteEggs and xDTaraZ.Pet.TrimEggs() or 0
+    if deletedPets > 0 then xDTaraZ.Data.Get(true) end
+    return deletedPets, deletedEggs
+end
+
+---@return number, number
+function xDTaraZ.Pet.HatchStep()
+    xDTaraZ.Pet.MuteAnim(true)
+    local petStore = xDTaraZ.Pet.Store()
+    local now = (workspace.GetServerTimeNow and workspace:GetServerTimeNow()) or (workspace:GetAttribute("ServerTime") or os.time())
+    local petCount = xDTaraZ.Pet.Counts(petStore)
+    local maxPet = petStore.maxPetNum or 25
+
+    if petCount >= maxPet - 2 or State.Opt.AutoSellPet then
+        xDTaraZ.Pet.CleanBag()
+        petStore = xDTaraZ.Pet.Store(true)
+        petCount = xDTaraZ.Pet.Counts(petStore)
+    end
+
+    local openRE = xDTaraZ.Util.Remote("Pet", "TryOpenEggRE")
+    local hatchRE = xDTaraZ.Util.Remote("Pet", "TryHatchEggRE")
+    local opened = 0
+
+    -- Open eggs in incubator whose server timer is ready
+    for _, uuid in pairs(petStore.hatched or {}) do
+        local entry = petStore.have and petStore.have[uuid]
+        if entry and (entry.HatchReadyTick or 0) <= now and petCount + opened < maxPet then
+            openRE:FireServer(uuid)
+            opened += 1
+        end
+    end
+
+    if opened > 0 then
+        xDTaraZ.Pet.ResetVFX()
+        petStore = xDTaraZ.Pet.Store(true)
+        petCount = xDTaraZ.Pet.Counts(petStore)
+    end
+
+    -- Incubate candidates up to free slots
+    local usedSlots = 0
+    for _ in pairs(petStore.hatched or {}) do usedSlots += 1 end
+    local maxHatch = petStore.maxHatchNum or 3
+    local freeSlots = math.max(0, maxHatch - usedSlots)
+    local hatched = 0
+
+    if freeSlots > 0 then
+        local targetEggId = "Egg2"
+        if State.Opt.TargetPet and State.PetTargetLabels and State.PetTargetLabels[State.Opt.TargetPet] then
+            local pId = State.PetTargetLabels[State.Opt.TargetPet]
+            local eggCfg = xDTaraZ.GameLib.Need(GameConfig.Egg.Config)
+            for eggId, data in pairs(eggCfg or {}) do
+                if data.PetList then
+                    for _, item in ipairs(data.PetList) do
+                        local subId = type(item) == "table" and (item.ID or item[1]) or item
+                        if subId == pId then targetEggId = eggId break end
+                    end
+                end
+            end
+        end
+
+        local candidates = {}
+        for uuid, entry in pairs(petStore.have or {}) do
+            if entry.Type == "Egg" and not entry.HatchReadyTick then
+                table.insert(candidates, {
+                    uuid = uuid,
+                    id = entry.ID,
+                    isTarget = (entry.ID == targetEggId),
+                    tier = xDTaraZ.Util.Tier(entry.ID)
+                })
+            end
+        end
+        table.sort(candidates, function(a, b)
+            if a.isTarget ~= b.isTarget then return a.isTarget end
+            if State.Opt.HatchBestFirst then return a.tier > b.tier end
+            return a.tier < b.tier
+        end)
+
+        for i = 1, math.min(freeSlots, #candidates) do
+            hatchRE:FireServer(candidates[i].uuid)
+            hatched += 1
+        end
+    end
+
+    if hatched > 0 or opened > 0 then
+        xDTaraZ.Data.Get(true)
+        xDTaraZ.Pet.ResetVFX()
+    end
+
+    if State.Opt.AutoDeleteEggs then xDTaraZ.Pet.TrimEggs() end
+    return opened, hatched
+end
+
+---@return number, number
+function xDTaraZ.Pet.InstantHatchAll()
+    xDTaraZ.Pet.MuteAnim(true)
+    local petStore = xDTaraZ.Pet.Store(true)
+    local openRE = xDTaraZ.Util.Remote("Pet", "TryOpenEggRE")
+    local hatchRE = xDTaraZ.Util.Remote("Pet", "TryHatchEggRE")
+    local now = (workspace.GetServerTimeNow and workspace:GetServerTimeNow()) or (workspace:GetAttribute("ServerTime") or os.time())
+    local maxPet = petStore.maxPetNum or 25
+    
+    xDTaraZ.Pet.CleanBag()
+    petStore = xDTaraZ.Pet.Store(true)
+
+    local opened, hatched = 0, 0
+    -- 1. Open all ready eggs
+    for _, uuid in pairs(petStore.hatched or {}) do
+        local entry = petStore.have and petStore.have[uuid]
+        if entry and (entry.HatchReadyTick or 0) <= now then
+            openRE:FireServer(uuid)
+            opened += 1
+        end
+    end
+
+    if opened > 0 then
+        xDTaraZ.Pet.ResetVFX()
+        petStore = xDTaraZ.Pet.Store(true)
+    end
+
+    -- 2. Incubate unhatched eggs into free slots
+    local usedSlots = 0
+    for _ in pairs(petStore.hatched or {}) do usedSlots += 1 end
+    local maxHatch = petStore.maxHatchNum or 3
+    local freeSlots = math.max(0, maxHatch - usedSlots)
+
+    if freeSlots > 0 then
+        local candidates = {}
+        for uuid, entry in pairs(petStore.have or {}) do
+            if entry.Type == "Egg" and not entry.HatchReadyTick then
+                table.insert(candidates, { uuid = uuid, tier = xDTaraZ.Util.Tier(entry.ID) })
+            end
+        end
+        table.sort(candidates, function(a, b) return a.tier > b.tier end)
+        for i = 1, math.min(freeSlots, #candidates) do
+            hatchRE:FireServer(candidates[i].uuid)
+            hatched += 1
+        end
+    end
+
+    xDTaraZ.Pet.ResetVFX()
+    xDTaraZ.Data.Get(true)
+    if State.Opt.AutoEquipPet then xDTaraZ.Pet.EquipBest() end
+    if State.Opt.AutoFeedPet then xDTaraZ.Pet.FeedBest() end
+    return opened, hatched
+end
+
+---@return string[]
+function xDTaraZ.Pet.Choices()
+    local labels, ids = {}, {}
+    local petFolder = GameConfig:FindFirstChild("Pet")
+    local petShow = petFolder and petFolder:FindFirstChild("Show") and xDTaraZ.GameLib.Require(petFolder.Show)
+    local petCfg = petFolder and petFolder:FindFirstChild("Config") and xDTaraZ.GameLib.Require(petFolder.Config)
+    if petShow or petCfg then
+        local petIds = {}
+        local allPetKeys = {}
+        if petShow then for id in pairs(petShow) do allPetKeys[id] = true end end
+        if petCfg then for id in pairs(petCfg) do allPetKeys[id] = true end end
+        for id in pairs(allPetKeys) do petIds[#petIds + 1] = id end
+        table.sort(petIds, function(a, b)
+            local rA = petCfg and petCfg[a] and petCfg[a].Rarity or ""
+            local rB = petCfg and petCfg[b] and petCfg[b].Rarity or ""
+            local lvA = xDTaraZ.Race.RarityLevel(rA)
+            local lvB = xDTaraZ.Race.RarityLevel(rB)
+            if lvA ~= lvB then return lvA > lvB end
+            return xDTaraZ.Util.Tier(a) > xDTaraZ.Util.Tier(b)
+        end)
+        for _, id in ipairs(petIds) do
+            local name = petShow and petShow[id] and (petShow[id].DisplayName or petShow[id].Name) or (petCfg and petCfg[id] and petCfg[id].Name) or id
+            local rarity = petCfg and petCfg[id] and petCfg[id].Rarity or "Pet"
+            local label = "[" .. rarity .. "] " .. name .. " (" .. id .. ")"
+            labels[#labels + 1] = label
+            ids[label] = id
+        end
+    end
+    State.PetTargetLabels = ids
+    return labels
+end
+
+---@return number
+function xDTaraZ.Pet.LockAllGodPets()
+    local petStore = xDTaraZ.Pet.Store(true)
+    local lockRE = xDTaraZ.Util.Remote("Backpack", "SetLockRE")
+    local locked = 0
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" and not entry.Lock then
+            local rarity = xDTaraZ.Pet.Rarity(entry.ID)
+            local rarityLv = xDTaraZ.Race.RarityLevel(rarity)
+            if rarityLv >= 4 or table.find(petStore.equiped or {}, uuid) then
+                lockRE:FireServer(uuid, true)
+                locked += 1
+            end
+        end
+    end
+    return locked
+end
+
+---@param targetPetId string
+---@param neededCount number?
+---@return number, string
+function xDTaraZ.Pet.FarmAndHatchTarget(targetPetId, neededCount)
+    neededCount = math.max(1, math.floor(neededCount or 1))
+    local eggCfg = xDTaraZ.GameLib.Need(GameConfig.Egg.Config)
+    local targetEggId = "Egg2"
+    for eggId, data in pairs(eggCfg or {}) do
+        if data.PetList then
+            for _, item in ipairs(data.PetList) do
+                local pId = type(item) == "table" and (item.ID or item[1]) or item
+                if pId == targetPetId then
+                    targetEggId = eggId
+                    break
+                end
+            end
+        end
+    end
+
+    -- Ensure target eggs in bag
+    local store = xDTaraZ.Pet.Store(true)
+    local targetEggCount = 0
+    for _, entry in pairs(store.have or {}) do
+        if entry.Type == "Egg" and entry.ID == targetEggId and not entry.HatchReadyTick then
+            targetEggCount += 1
+        end
+    end
+
+    if targetEggCount < 5 then
+        xDTaraZ.Pet.TrimEggs(targetEggId)
+        xDTaraZ.Stage.FarmTurbo(targetEggId, "Egg", 15)
+        store = xDTaraZ.Pet.Store(true)
+    end
+
+    -- Open finished eggs and incubate target eggs
+    local opened, hatched = xDTaraZ.Pet.HatchStep()
+
+    store = xDTaraZ.Pet.Store(true)
+    local now = (workspace.GetServerTimeNow and workspace:GetServerTimeNow()) or (workspace:GetAttribute("ServerTime") or os.time())
+    local minDiff = math.huge
+    for _, u in pairs(store.hatched or {}) do
+        local it = store.have and store.have[u]
+        if it and it.HatchReadyTick then
+            local diff = math.max(0, it.HatchReadyTick - now)
+            if diff < minDiff then minDiff = diff end
+        end
+    end
+
+    local newlyGained = 0
+    for uuid, entry in pairs(store.have or {}) do
+        if entry.Type == "Pet" and entry.ID == targetPetId then
+            newlyGained += 1
+            if State.Opt.AutoLockTargetPet and not entry.Lock then
+                xDTaraZ.Util.Remote("Backpack", "SetLockRE"):FireServer(uuid, true)
+            end
+        end
+    end
+
+    if newlyGained > 0 then
+        xDTaraZ.Pet.EquipBest()
+        xDTaraZ.Pet.FeedAllMax()
+        return newlyGained, ("Acquired %s!"):format(targetPetId)
+    end
+
+    if minDiff < math.huge then
+        return 0, ("Incubating %s (%ds left)"):format(targetEggId, minDiff)
+    end
+    return 0, "No eggs incubating"
+end
+
+function xDTaraZ.Pet.ChaseStep()
+    if not State.Opt.AutoChaseTargetPet then return end
+    local picked = State.PetTargetLabels and State.PetTargetLabels[State.Opt.TargetPet]
+    if not picked then return end
+    local gained = xDTaraZ.Pet.FarmAndHatchTarget(picked, State.Opt.TargetPetCopies or 1)
+    if gained >= (State.Opt.TargetPetCopies or 1) then
+        State.Opt.AutoChaseTargetPet = false
+        if Library and Library.Options and Library.Options.AutoChaseTargetPet then
+            Library.Options.AutoChaseTargetPet:SetValue(false)
+        end
+    end
+end
+
+function xDTaraZ.Pet.InfiniteLoopStep()
+    local petStore = xDTaraZ.Pet.Store(true)
+    local pets, eggs = xDTaraZ.Pet.Counts(petStore)
+    local maxEggs = petStore.maxEggNum or 25
+    if eggs < maxEggs - 5 then
+        xDTaraZ.Stage.FarmEggsAndFood(20)
+    end
+    xDTaraZ.Pet.HatchStep()
+    xDTaraZ.Pet.EquipBest()
+    xDTaraZ.Pet.FeedBest()
+    xDTaraZ.Pet.DeployStep()
+end
+
+---@return number
+function xDTaraZ.Pet.EquipBest()
+    local petStore = xDTaraZ.Pet.Store()
+    local owned = {}
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" then
+            table.insert(owned, { uuid = uuid, score = xDTaraZ.Pet.Score(entry) })
+        end
+    end
+    if #owned == 0 then return 0 end
+    table.sort(owned, function(a, b) return a.score > b.score end)
+
+    local maxEquip = petStore.maxEquipNum or 1
+    local wanted, wantedList = {}, {}
+    for i = 1, math.min(maxEquip, #owned) do
+        wanted[owned[i].uuid] = owned[i].score
+        table.insert(wantedList, owned[i])
+    end
+
+    local currentSet = {}
+    for _, uuid in pairs(petStore.equiped or {}) do
+        currentSet[uuid] = true
+    end
+
+    local equipRE = xDTaraZ.Util.Remote("Pet", "IsEquipPetRE")
+    local changed = 0
+    for uuid in pairs(currentSet) do
+        if not wanted[uuid] then
+            local entry = petStore.have and petStore.have[uuid]
+            local curScore = entry and xDTaraZ.Pet.Score(entry) or -1
+            local bestReplacement = wantedList[1]
+            if bestReplacement and bestReplacement.score > curScore then
+                equipRE:FireServer(uuid, false)
+                currentSet[uuid] = nil
+            end
+        end
+    end
+    for _, item in ipairs(wantedList) do
+        if not currentSet[item.uuid] then
+            equipRE:FireServer(item.uuid, true)
+            changed += 1
+        end
+    end
+    if changed > 0 then xDTaraZ.Data.Get(true) end
+    return changed
+end
+
+---@return number
+function xDTaraZ.Pet.FeedBest()
+    local profile = xDTaraZ.Data.Get()
+    local petStore = profile.Pet or {}
+    local foodCfg = xDTaraZ.GameLib.Need(GameConfig.Food.Config)
+    local petHelper = xDTaraZ.GameLib.Api(GameConfig.Pet.Helper)
+    local foods = {}
+    for uuid, entry in pairs(profile.Backpack.have or {}) do
+        local count = math.floor(entry.Number or 0)
+        local info = entry.Type == "Food" and foodCfg[entry.ID]
+        if info and count >= 1 and (info.Exp or 0) > 0 then
+            table.insert(foods, { uuid = uuid, count = count, exp = info.Exp })
+        end
+    end
+    if #foods == 0 then return 0 end
+    table.sort(foods, function(a, b) return a.exp > b.exp end)
+
+    local equippedSet = {}
+    for _, uuid in pairs(petStore.equiped or {}) do equippedSet[uuid] = true end
+    local targets = {}
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" and not petHelper.CheckLevelIsMax(entry.Level or 1, entry.ID) then
+            local priority = (equippedSet[uuid] and 1e9 or 0) + (entry.DeployStartTick and 1e8 or 0) + xDTaraZ.Pet.Score(entry)
+            table.insert(targets, { uuid = uuid, entry = entry, priority = priority })
+        end
+    end
+    if #targets == 0 then return 0 end
+    table.sort(targets, function(a, b) return a.priority > b.priority end)
+
+    local target = targets[1]
+    local maxLv = petHelper.GetMaxLevel(target.entry.ID) or 20
+    local needExp = -(target.entry.Exp or 0)
+    for lv = (target.entry.Level or 1) + 1, maxLv do
+        needExp += (petHelper.GetNeedExp(lv) or 0)
+    end
+    if needExp <= 0 then return 0 end
+
+    local feedMap, usedAny = {}, false
+    for _, food in ipairs(foods) do
+        if needExp <= 0 then break end
+        local use = math.min(food.count, math.max(1, math.ceil(needExp / food.exp)))
+        if use > 0 then
+            feedMap[food.uuid] = use
+            needExp -= use * food.exp
+            usedAny = true
+        end
+    end
+    if not usedAny then return 0 end
+    xDTaraZ.Util.Remote("Pet", "FeedPetRE"):FireServer(target.uuid, feedMap)
+    xDTaraZ.Data.Get(true)
+    return 1
+end
+
+---@return number
+function xDTaraZ.Pet.FeedAllMax()
+    local totalFed = 0
+    for _ = 1, 15 do
+        local fed = xDTaraZ.Pet.FeedBest()
+        if fed <= 0 then break end
+        totalFed += fed
+        task.wait(0.05)
+    end
+    return totalFed
+end
+
+---@return number
+function xDTaraZ.Pet.DeployStep()
+    local petStore = xDTaraZ.Pet.Store()
+    if type(petStore.deployRewardList) == "table" and next(petStore.deployRewardList) ~= nil then
+        xDTaraZ.Util.Remote("Pet", "ClaimAllDeployRewardRE"):FireServer()
+    end
+    local deployedCount = 0
+    local candidates = {}
+    for uuid, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" then
+            if entry.DeployStartTick then
+                deployedCount += 1
+            else
+                table.insert(candidates, { uuid = uuid, score = xDTaraZ.Pet.Score(entry) })
+            end
+        end
+    end
+    local freeSlots = (petStore.maxDeployNum or 2) - deployedCount
+    if freeSlots <= 0 or #candidates == 0 then return 0 end
+    table.sort(candidates, function(a, b) return a.score > b.score end)
+    local deployRE = xDTaraZ.Util.Remote("Pet", "IsDeployPetRE")
+    local deployed = 0
+    for i = 1, math.min(freeSlots, #candidates) do
+        deployRE:FireServer(candidates[i].uuid, true)
+        deployed += 1
+    end
+    if deployed > 0 then xDTaraZ.Data.Get(true) end
+    return deployed
+end
+
+---@param profile table?
+---@return string
+function xDTaraZ.Pet.StatusText(profile)
+    local prof = profile or xDTaraZ.Data.Get() or {}
+    local petStore = prof.Pet or {}
+    local pets, eggs = xDTaraZ.Pet.Counts(petStore)
+    local hatched = 0
+    for _ in pairs(petStore.hatched or {}) do hatched += 1 end
+    local deployed = 0
+    for _, entry in pairs(petStore.have or {}) do
+        if entry.Type == "Pet" and entry.DeployStartTick then deployed += 1 end
+    end
+    local equippedNames = {}
+    local petShow = GameConfig:FindFirstChild("Pet") and GameConfig.Pet:FindFirstChild("Show") and xDTaraZ.GameLib.Require(GameConfig.Pet.Show)
+    for _, uuid in pairs(petStore.equiped or {}) do
+        local entry = petStore.have and petStore.have[uuid]
+        if entry then
+            local name = petShow and petShow[entry.ID] and petShow[entry.ID].DisplayName or entry.ID or "Pet"
+            table.insert(equippedNames, ("%s Lv.%d"):format(tostring(name), tonumber(entry.Level) or 1))
+        end
+    end
+    local eqText = #equippedNames > 0 and table.concat(equippedNames, ", ") or "None"
+    local now = (workspace.GetServerTimeNow and workspace:GetServerTimeNow()) or (workspace:GetAttribute("ServerTime") or os.time())
+    local hatchTimers = {}
+    for _, uuid in pairs(petStore.hatched or {}) do
+        local entry = petStore.have and petStore.have[uuid]
+        if entry and entry.HatchReadyTick then
+            local diff = math.max(0, math.floor(entry.HatchReadyTick - now))
+            table.insert(hatchTimers, diff .. "s")
+        end
+    end
+    local hatchDetail = #hatchTimers > 0 and (" (" .. table.concat(hatchTimers, ", ") .. ")") or ""
+    return string.format(
+        "Pet: %s\nBags: %d/%d Pets · %d/%d Eggs | Hatch: %d/%d%s | Deploy: %d/%d",
+        tostring(eqText),
+        tonumber(pets) or 0, tonumber(petStore.maxPetNum) or 25,
+        tonumber(eggs) or 0, tonumber(petStore.maxEggNum) or 25,
+        tonumber(hatched) or 0, tonumber(petStore.maxHatchNum) or 3,
+        tostring(hatchDetail or ""),
+        tonumber(deployed) or 0, tonumber(petStore.maxDeployNum) or 2
+    )
+end
+
+---@return Humanoid?
 function xDTaraZ.Movement.Humanoid()
     return LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 end
@@ -2350,6 +3683,7 @@ function xDTaraZ.Movement.Bind()
     end))
 end
 
+---@param enabled boolean
 function xDTaraZ.Session.SetLowGraphics(enabled)
     RunService:Set3dRenderingEnabled(not enabled)
 end
@@ -2360,7 +3694,7 @@ function xDTaraZ.Session.Rejoin()
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end
 
----@return boolean  false when the server list was refused
+---@return boolean
 function xDTaraZ.Session.HopSmallest()
     local body = xDTaraZ.Util.HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(game.PlaceId))
     local ok, list = pcall(HttpService.JSONDecode, HttpService, body or "")
@@ -2376,12 +3710,14 @@ function xDTaraZ.Session.HopSmallest()
     return true
 end
 
+---@return boolean
 function xDTaraZ.Session.SavePosition()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     State.SavedSpot = root and root.CFrame
     return State.SavedSpot ~= nil
 end
 
+---@return boolean
 function xDTaraZ.Session.ReturnPosition()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not (root and State.SavedSpot) then return false end
@@ -2389,6 +3725,7 @@ function xDTaraZ.Session.ReturnPosition()
     return true
 end
 
+---@param enabled boolean
 function xDTaraZ.Boss.HopFlag(enabled)
     local flag = Config.SaveFolder .. "/" .. Config.BossHopFlag
     pcall(function()
@@ -2401,20 +3738,20 @@ function xDTaraZ.Boss.HopFlag(enabled)
     end)
 end
 
----@return number?  seconds since the last hop, nil when no hop is pending
+---@return number?
 function xDTaraZ.Boss.SinceLastHop()
     local ok, stamp = pcall(readfile, Config.SaveFolder .. "/" .. Config.BossHopFlag)
     if not ok or not tonumber(stamp) then return nil end
     return os.time() - tonumber(stamp)
 end
 
----@return boolean  true only right after a hop, so a fresh launch never starts hopping by itself
+---@return boolean
 function xDTaraZ.Boss.HopWanted()
     local since = xDTaraZ.Boss.SinceLastHop()
     return since ~= nil and since < Config.BossHopResume
 end
 
----@return string[], number  unvisited servers from the saved list, and when it was fetched
+---@return string[], number
 function xDTaraZ.Boss.LoadServers()
     local ok, text = pcall(readfile, Config.SaveFolder .. "/" .. Config.BossHopServers)
     if not ok then return {}, 0 end
@@ -2426,8 +3763,8 @@ function xDTaraZ.Boss.LoadServers()
     return decoded.ids, fetchedAt
 end
 
----@param ids string[]    servers still unvisited
----@param fetchedAt number  when the list came from the API
+---@param ids string[]
+---@param fetchedAt number
 function xDTaraZ.Boss.SaveServers(ids, fetchedAt)
     pcall(function()
         if not isfolder(Config.SaveFolder) then makefolder(Config.SaveFolder) end
@@ -2435,7 +3772,7 @@ function xDTaraZ.Boss.SaveServers(ids, fetchedAt)
     end)
 end
 
----@return string[]  public servers with room; empty while the API refuses (waits 2x longer after each refusal)
+---@return string[]
 function xDTaraZ.Boss.FetchServers()
     if os.clock() < State.HopBlockedUntil then return {} end
     local body = xDTaraZ.Util.HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(game.PlaceId))
@@ -2455,7 +3792,7 @@ function xDTaraZ.Boss.FetchServers()
     return {}
 end
 
----@return string?  a public server with room, not this one
+---@return string?
 function xDTaraZ.Boss.PickServer()
     local ids, fetchedAt = xDTaraZ.Boss.LoadServers()
     if #ids == 0 then
@@ -2485,7 +3822,7 @@ function xDTaraZ.Boss.Hop()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, LocalPlayer)
 end
 
----@return boolean  true when this server is worth staying in: boss up, boss about to spawn, or still collecting
+---@return boolean
 function xDTaraZ.Boss.WorthStaying()
     if State.BossLooting and os.clock() - State.BossLooting < Config.BossLootTimeout then return true end
     local boss = workspace:GetAttribute("CurrentWorldBoss")
@@ -2516,83 +3853,8 @@ function xDTaraZ.Boss.HopStep()
     xDTaraZ.Boss.Hop()
 end
 
----@return table?  { target, tries } while a search is running
-function xDTaraZ.Session.OldSearch()
-    local ok, text = pcall(readfile, Config.SaveFolder .. "/" .. Config.OldServerFlag)
-    if not ok then return nil end
-    local decoded
-    ok, decoded = pcall(HttpService.JSONDecode, HttpService, text)
-    return ok and type(decoded) == "table" and tonumber(decoded.target) and decoded or nil
-end
-
-function xDTaraZ.Session.SaveOldSearch(search)
-    local path = Config.SaveFolder .. "/" .. Config.OldServerFlag
-    pcall(function()
-        if not search then
-            if isfile(path) then delfile(path) end
-            return
-        end
-        if not isfolder(Config.SaveFolder) then makefolder(Config.SaveFolder) end
-        writefile(path, HttpService:JSONEncode(search))
-    end)
-end
-
----@param target number?  place version to look for, nil to continue a saved search
----@return string         found / searching / gaveup / nolist
-function xDTaraZ.Session.FindOldServer(target)
-    local search = target and { target = target, tries = 0, known = xDTaraZ.Session.KnownOld() } or xDTaraZ.Session.OldSearch()
-    if not search then return "gaveup" end
-    if game.PlaceVersion <= search.target then
-        xDTaraZ.Session.SaveOldSearch(nil)
-        xDTaraZ.Session.RememberOld(game.JobId)
-        return "found"
-    end
-    if search.tries >= Config.OldServerTries then
-        xDTaraZ.Session.SaveOldSearch(nil)
-        return "gaveup"
-    end
-    local serverId
-    search.known = type(search.known) == "table" and search.known or {}
-    repeat serverId = table.remove(search.known, 1) until serverId ~= game.JobId
-    serverId = serverId or xDTaraZ.Boss.PickServer()
-    if not serverId then return "nolist" end
-    search.tries += 1
-    xDTaraZ.Session.SaveOldSearch(search)
-    local queue = queue_on_teleport or queueonteleport
-    if queue and not State.HopQueued then
-        queue(Config.ReloadSource)
-        State.HopQueued = true
-    end
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, LocalPlayer)
-    return "searching"
-end
-
----@return string[]  old-version servers found before, newest first
-function xDTaraZ.Session.KnownOld()
-    local ok, text = pcall(readfile, Config.SaveFolder .. "/" .. Config.OldServerKnown)
-    if not ok then return {} end
-    local decoded
-    ok, decoded = pcall(HttpService.JSONDecode, HttpService, text)
-    return ok and type(decoded) == "table" and decoded or {}
-end
-
-function xDTaraZ.Session.RememberOld(jobId)
-    local known = { jobId }
-    for _, id in ipairs(xDTaraZ.Session.KnownOld()) do
-        if id ~= jobId and #known < Config.OldServerKeep then table.insert(known, id) end
-    end
-    pcall(function()
-        if not isfolder(Config.SaveFolder) then makefolder(Config.SaveFolder) end
-        writefile(Config.SaveFolder .. "/" .. Config.OldServerKnown, HttpService:JSONEncode(known))
-    end)
-end
-
 function xDTaraZ.Session.Bind()
     table.insert(State.Conns, TeleportService.TeleportInitFailed:Connect(function()
-        if xDTaraZ.Session.OldSearch() then
-            task.delay(1, xDTaraZ.Util.Try, xDTaraZ.Session.FindOldServer)
-            return
-        end
         if not State.BossHopping then return end
         State.BossHopping = false
         task.delay(1, xDTaraZ.Util.Try, xDTaraZ.Boss.HopStep)
@@ -2610,6 +3872,9 @@ function xDTaraZ.Session.Bind()
 end
 
 xDTaraZ.Scheduler.Jobs = {
+    { key = "SuperLootAura", every = Config.KillAuraInterval, run = function() xDTaraZ.SuperLoot.Step() end },
+    { key = "AutoBattle", every = Config.KillAuraInterval, run = function() xDTaraZ.Stage.BattleStep() end },
+    { key = "AutoCheckIn", every = Config.ClaimInterval, run = function() xDTaraZ.Claim.CheckIn() end },
     { key = "MaxGear", every = 0, run = function() xDTaraZ.Gear.MaxStep() end },
     { key = "CollectOre", every = 0, run = function() xDTaraZ.Stage.Collect(State.Opt.Stage or xDTaraZ.Stage.Best(), State.Opt.CollectRarities) end },
     { key = "AutoForge", every = 0, run = function() xDTaraZ.Forge.Step() end },
@@ -2625,13 +3890,34 @@ xDTaraZ.Scheduler.Jobs = {
     { key = "AutoSeason", every = Config.SeasonInterval, run = function() xDTaraZ.Season.Step() end },
     { key = "AutoTokenShop", every = Config.TokenShopInterval, run = function() xDTaraZ.TokenShop.BuyAll() end },
     { key = "AutoBestRace", every = 10, run = function() xDTaraZ.Race.EquipBest() end },
+    { key = "TurboSpawn", every = 0, run = function() xDTaraZ.Spawn.TurboStep() end },
+    { key = "AutoChaseTargetPet", every = 1, run = function() xDTaraZ.Pet.ChaseStep() end },
+    { key = "AutoHatchEgg", every = 1, run = function() xDTaraZ.Pet.HatchStep() end },
+    { key = "AutoEquipPet", every = Config.PetInterval, run = function() xDTaraZ.Pet.EquipBest() end },
+    { key = "AutoFeedPet", every = Config.PetInterval, run = function() xDTaraZ.Pet.FeedBest() end },
+    { key = "AutoDeployPet", every = Config.PetDeployInterval, run = function() xDTaraZ.Pet.DeployStep() end },
+    { key = "AutoSellPet", every = Config.SellInterval, run = function() xDTaraZ.Pet.CleanBag() end },
     { key = "AutoIndex", every = Config.IndexInterval, run = function() xDTaraZ.Util.Exclusive("Index", xDTaraZ.Index.HuntAll) end },
 }
 
----Runs one round of a feature; one that keeps failing for Config.FailWindow seconds is switched off and queued for the UI to report.
----@param key string  State.Opt flag of the feature
+---@param key string
+---@param fn function
 function xDTaraZ.Scheduler.Run(key, fn)
-    local ok, err = pcall(fn)
+    if not State.Alive or State.JobRunning[key] then return end
+    local result
+    local thread = task.defer(function() result = table.pack(pcall(fn)) end)
+    State.JobRunning[key] = thread
+    local deadline = os.clock() + State.Opt.JobTimeout
+    local toggleJob = type(State.Opt[key]) == "boolean"
+    while State.Alive and (not toggleJob or State.Opt[key]) and not result and os.clock() < deadline do task.wait(0.05) end
+    if not result then
+        xDTaraZ.Util.CancelTree(thread)
+        result = { false, "job timed out" }
+    end
+    State.JobRunning[key] = nil
+    if not State.Alive or (toggleJob and not State.Opt[key]) then return end
+    local ok, err = result[1], result[2]
+    State.JobStats[key] = { ok = ok, at = os.clock(), error = not ok and tostring(err) or nil }
     local failures = State.Failures
     if ok then
         failures[key] = nil
@@ -2654,14 +3940,44 @@ function xDTaraZ.Scheduler.Run(key, fn)
     table.insert(State.Halted, { key, reason })
 end
 
+xDTaraZ.Scheduler.Groups = {
+    SuperLootAura = "combat", KillAura = "combat", AutoBattle = "combat", AutoWorldBoss = "combat",
+    AutoTrain = "train", AutoClick = "train", AutoRebirth = "train",
+    AutoHatchEgg = "pet", AutoEquipPet = "pet", AutoFeedPet = "pet", AutoDeployPet = "pet", AutoSellPet = "pet",
+    BossHop = "travel",
+}
+
 function xDTaraZ.Scheduler.Step()
-    if State.Lock then return end
+    if not State.Alive then return end
     local now = os.clock()
-    for _, job in ipairs(xDTaraZ.Scheduler.Jobs) do
-        if not State.Opt[job.key] or State.Lock then continue end
+    if State.Lock and State.LockTime and (now - State.LockTime > 12) then
+        State.Lock = nil
+        State.LockOwner = nil
+        State.LockTime = 0
+    end
+    if State.Lock then return end
+
+    local active = 0
+    for _ in pairs(State.JobGroups) do active += 1 end
+    local jobs = xDTaraZ.Scheduler.Jobs
+    local cursor = State.ScheduleCursor or 0
+    State.ScheduleCursor = cursor % #jobs + 1
+    for offset = 1, #jobs do
+        if active >= math.clamp(State.Opt.ParallelJobs, 1, 8) then break end
+        local index = (cursor + offset - 1) % #jobs + 1
+        local job = jobs[index]
+        local group = xDTaraZ.Scheduler.Groups[job.key] or "inventory"
+        if not State.Opt[job.key] or State.JobRunning[job.key] or State.JobGroups[group] then continue end
         if now - (State.LastRun[job.key] or 0) < job.every then continue end
         State.LastRun[job.key] = now
-        xDTaraZ.Scheduler.Run(job.key, job.run)
+        active += 1
+        local monitor
+        monitor = task.defer(function()
+            local ok, err = pcall(xDTaraZ.Scheduler.Run, job.key, job.run)
+            if State.JobGroups[group] == monitor then State.JobGroups[group] = nil end
+            if not ok and State.Alive then xDTaraZ.Util.WarnJob(job.key, err) end
+        end)
+        State.JobGroups[group] = monitor
     end
 end
 
@@ -2679,7 +3995,7 @@ function xDTaraZ.Scheduler.Start()
 end
 
 function xDTaraZ.Scheduler.Boot()
-    for _, bind in ipairs({ xDTaraZ.Movement.Bind, xDTaraZ.Level.Bind, xDTaraZ.SuperLoot.Bind, xDTaraZ.Boss.Bind, xDTaraZ.Session.Bind }) do
+    for _, bind in ipairs({ xDTaraZ.Movement.Bind, xDTaraZ.Level.Bind, xDTaraZ.SuperLoot.Bind, xDTaraZ.Boss.Bind, xDTaraZ.Pet.Bind, xDTaraZ.Session.Bind }) do
         xDTaraZ.Util.Try(bind)
     end
     xDTaraZ.Scheduler.Start()
@@ -2687,6 +4003,22 @@ end
 
 function xDTaraZ.Scheduler.Stop()
     State.Alive = false
+    for _, threads in pairs(State.WorkerBatches) do
+        for _, thread in ipairs(threads) do pcall(task.cancel, thread) end
+    end
+    for _, thread in pairs(State.JobRunning) do pcall(task.cancel, thread) end
+    for _, monitor in pairs(State.JobGroups) do xDTaraZ.Util.CancelTree(monitor) end
+    for owner in pairs(State.ChildThreads) do xDTaraZ.Util.CancelTree(owner) end
+    table.clear(State.JobGroups)
+    table.clear(State.ChildThreads)
+    State.Lock = nil
+    State.LockOwner = nil
+    State.LockTime = 0
+    table.clear(State.WorkerBatches)
+    table.clear(State.JobRunning)
+    table.clear(State.LootQueue)
+    table.clear(State.LootSeen)
+    table.clear(State.LootPending)
     for _, conn in ipairs(State.Conns) do
         conn:Disconnect()
     end
@@ -2702,6 +4034,7 @@ function xDTaraZ.Scheduler.Stop()
     if State.Opt.LowGraphics then
         xDTaraZ.Session.SetLowGraphics(false)
     end
+    xDTaraZ.Util.Try(xDTaraZ.Pet.MuteAnim, false)
     xDTaraZ.Util.Try(xDTaraZ.Tower.Exit)
     if LocalPlayer:GetAttribute("IntoFight") == "WorldBoss" then xDTaraZ.Util.Try(xDTaraZ.Boss.Leave) end
     xDTaraZ.Guard.Stop()
@@ -2719,7 +4052,8 @@ local function BuildInterface()
     local uiQueue = {}
     local statusLabel, gearLabel, taskLabel
 
-    ---@return table, table  empty tables when the game data can't be read
+    ---@param fn function
+    ---@return table, table
     local function Source(fn)
         local ok, first, second = pcall(fn)
         if not ok then
@@ -2747,7 +4081,9 @@ local function BuildInterface()
         if toggle and toggle.Value then toggle:SetValue(false) end
     end
 
-    ---@param pickFirst boolean?  also select the first entry
+    ---@param idx string
+    ---@param values table
+    ---@param pickFirst boolean?
     local function SetList(idx, values, pickFirst)
         local dropdown = Options[idx]
         if not dropdown then return end
@@ -2759,7 +4095,8 @@ local function BuildInterface()
         end
     end
 
-    ---@param module Instance  game module the feature can't run without
+    ---@param option any
+    ---@param module Instance
     local function NeedModule(option, module)
         if xDTaraZ.GameLib.Require(module) then return end
         xDTaraZ.Compat.Block(option, T("Not available on this executor", "ใช้กับ executor นี้ไม่ได้"))
@@ -2786,23 +4123,27 @@ local function BuildInterface()
         end
     end
 
+    local actionId = 0
     local function Action(action)
+        actionId += 1
+        local key = "Action:" .. actionId
         return function()
-            task.defer(xDTaraZ.Util.Try, action)
+            if not State.Alive or State.JobRunning[key] then return end
+            task.defer(xDTaraZ.Scheduler.Run, key, action)
         end
     end
 
-    ---@param name string  lock name, also the busy message
+    ---@param name string
+    ---@param action function
+    ---@param done function?
     local function LongAction(name, action, done)
-        return function()
-            task.defer(function()
-                if State.Lock then return Notify("Busy: " .. State.Lock, "Warning") end
-                Notify(name .. "...")
-                local outcome
-                xDTaraZ.Util.Exclusive(name, function() outcome = action() end)
-                if done then Notify(done(outcome), "Success") end
-            end)
-        end
+        return Action(function()
+            if State.Lock then return Notify("Busy: " .. State.Lock, "Warning") end
+            Notify(name .. "...")
+            local acquired, outcome = xDTaraZ.Util.Exclusive(name, action)
+            if not acquired then return Notify("An inventory task is still running; retry when it finishes", "Warning") end
+            if done then Notify(done(outcome), (outcome == false or outcome == nil or outcome == 0) and "Warning" or "Success") end
+        end)
     end
 
     local function Toggle(group, key, text, description, onChange)
@@ -2851,7 +4192,12 @@ local function BuildInterface()
         })
     end
 
-    ---@param source function  returns the dropdown values, read safely
+    ---@param group any
+    ---@param key string
+    ---@param text table
+    ---@param description table?
+    ---@param source function
+    ---@param noSave boolean?
     local function Pick(group, key, text, description, source, noSave)
         local values = Source(source)
         opt[key] = values[1]
@@ -2881,7 +4227,8 @@ local function BuildInterface()
         })
     end
 
-    ---@param idOf function  dropdown label -> game item id
+    ---@param idx string
+    ---@param idOf function
     local function Decorate(idx, idOf)
         task.defer(function()
             local dropdown = Options[idx]
@@ -2942,21 +4289,34 @@ local function BuildInterface()
         local rewardBox = tab:AddLeftGroupbox(T("Rewards", "รางวัล"))
         Feature(rewardBox, "AutoClaim", T("Auto Claim", "รับรางวัลอัตโนมัติ"), T("Claims every free reward, including index", "รับรางวัลฟรีทุกอย่าง รวมสมุดสะสม"))
         rewardBox:AddButton({ Text = T("Claim Now", "รับเดี๋ยวนี้"), Style = "Success", Func = Action(xDTaraZ.Claim.All) })
+        Feature(rewardBox, "AutoCheckIn", T("Auto 30-Day Check-In", "รับเช็กอิน 30 วันอัตโนมัติ"), T("Claims every signed day that still has an unclaimed reward", "รับรางวัลทุกวันที่เช็กอินแล้วและยังไม่ได้รับ"))
+        rewardBox:AddButton({ Text = T("Claim Check-In Now", "รับรางวัลเช็กอินเดี๋ยวนี้"), Func = LongAction("Check-In", xDTaraZ.Claim.CheckIn, function(count)
+            return ("Claimed %d check-in rewards"):format(count or 0)
+        end) })
         rewardBox:AddButton({ Text = T("Redeem All Codes", "ใช้โค้ดทั้งหมด"), Style = "Primary", Func = Action(function()
             Notify(xDTaraZ.Claim.AllCodes(), "Success", 6)
         end) })
     end
 
     local function BuildGear(tab)
+        local formBox = tab:AddRightGroupbox(T("Dual Form", "อุปกรณ์สองร่าง"))
+        formBox:AddLabel(T("Switch equipped dual-form gear between A and B", "สลับ A/B ของอุปกรณ์สองร่างที่ใส่อยู่"))
+        for _, slot in ipairs(Config.GearTypes) do
+            formBox:AddButton({ Text = T("Switch " .. slot .. " Form", "สลับร่าง " .. slot), Func = Action(function()
+                local changed = xDTaraZ.Gear.SwitchForm(slot)
+                Notify(changed and "Form switched" or "Equip dual-form gear in this slot first", changed and "Success" or "Info")
+            end) })
+        end
+
         local gearBox = tab:AddLeftGroupbox(T("Max Gear", "อุปกรณ์สูงสุด"))
         Feature(gearBox, "MaxGear", T("Max Gear", "อุปกรณ์สูงสุด"),
             T("Best gear and runes, enhanced to your target. Finds anything missing by itself", "ของดีสุด รูนดีสุด ตีบวกถึงเป้า ขาดอะไรหาเองหมด"),
             function()
                 State.GearForged = false
             end)
-        Check(gearBox, "GearForge", T("Forge best gear", "หลอมของดีสุด"))
-        Check(gearBox, "GearEnchant", T("Best runes", "ใส่รูนดีสุด"))
-        Check(gearBox, "GearEnhance", T("Enhance", "ตีบวก"))
+        Check(gearBox, "GearForge", T("Forge gear automatically", "หลอมของอัตโนมัติ"))
+        Check(gearBox, "GearEnchant", T("Equip runes automatically", "ใส่รูนอัตโนมัติ"))
+        Check(gearBox, "GearEnhance", T("Enhance automatically", "ตีบวกอัตโนมัติ"))
         gearBox:AddSlider("EnhanceTarget", {
             Text = T("Enhance Target", "ตีบวกถึง"),
             Description = T("Above +10 the success rate gets very low and can take a long time", "เกิน +10 โอกาสสำเร็จต่ำมาก อาจใช้เวลานาน"),
@@ -2985,8 +4345,8 @@ local function BuildInterface()
         })
 
         local equipBox = tab:AddRightGroupbox(T("Equip", "ใส่ของ"))
-        Feature(equipBox, "AutoEquip", T("Auto Equip Best", "ใส่ของดีสุดอัตโนมัติ"), T("Always wears your strongest weapon, armor and hat, counting enhance level", "ใส่อาวุธ เกราะ และหมวกที่แรงที่สุดเสมอ นับระดับตีบวกด้วย"))
-        equipBox:AddButton({ Text = T("Equip Best Now", "ใส่ของดีสุดเดี๋ยวนี้"), Func = function()
+        Feature(equipBox, "AutoEquip", T("Auto Equip", "ใส่ของอัตโนมัติ"), T("Always wears your strongest weapon, armor and hat, counting enhance level", "ใส่อาวุธ เกราะ และหมวกที่แรงที่สุดเสมอ นับระดับตีบวกด้วย"))
+        equipBox:AddButton({ Text = T("Equip Now", "ใส่ของเดี๋ยวนี้"), Func = function()
             task.defer(function()
                 local changed = xDTaraZ.Gear.EquipBest()
                 Notify(changed > 0 and ("Equipped %d better item(s)"):format(changed) or "Already wearing your best gear")
@@ -3010,16 +4370,43 @@ local function BuildInterface()
     local function BuildFarm(tab)
         local stageBox = tab:AddLeftGroupbox(T("Stage", "ด่าน"))
         Pick(stageBox, "Stage", T("Stage", "ด่าน"), T("Any stage, no unlock needed", "เลือกด่านไหนก็ได้ ไม่ต้องปลดล็อก"), xDTaraZ.Stage.List)
+        Feature(stageBox, "AutoBattle", T("Auto Battle", "เข้าด่านและฆ่าอัตโนมัติ"), T("Enters the selected stage and clears normal enemies and stage bosses", "เข้าด่านที่เลือกและฆ่ามอนสเตอร์กับบอสด่านทั้งหมด"))
         Feature(stageBox, "CollectOre", T("Auto Collect Ore", "เก็บแร่อัตโนมัติ"), T("Clears the stage and collects its ores nonstop", "เคลียร์ด่านแล้วเก็บแร่ไม่หยุด"))
         MultiSelect(stageBox, "CollectRarities", T("Ore Rarity Filter", "กรอง rarity แร่"), T("Only collect these rarities", "เก็บเฉพาะ rarity ที่เลือก"), rarityNames)
 
-        local combatBox = tab:AddLeftGroupbox(T("Combat", "ต่อสู้"))
-        local killAura = Feature(combatBox, "KillAura", T("Kill Aura", "ฆ่ารอบตัว"), T("Every monster in your fight dies instantly", "มอนสเตอร์ทุกตัวในการต่อสู้ตายทันที"), function(value)
+        local combatBox = tab:AddLeftGroupbox(T("Combat", "ต่อสู้"), nil, "OP")
+        local killAura = Feature(combatBox, "KillAura", T("Kill Aura", "ฆ่ารอบตัว"), T("Clears all enemies across the whole map instantly", "ฆ่าศัตรูทั้งแมพทันที ยิงทะลุกำแพง ไม่จำกัดระยะ"), function(value)
             if value then xDTaraZ.Combat.Start() end
         end)
         NeedModule(killAura, ReplicatedStorage.Utils.CommunicationUtils)
-        Feature(combatBox, "SuperLootAura", T("Kill Ore Boss", "ฆ่าบอสแร่"), T("Kills rare ore bosses the moment they spawn", "ฆ่าบอสแร่หายากทันทีที่เกิด"), function(value)
-            if value then xDTaraZ.SuperLoot.KillExisting() end
+        Check(combatBox, "AuraMapWide", T("Map-Wide / Infinite Range", "โจมตีทั้งแมพ / ไม่จำกัดระยะ"))
+        combatBox:AddDropdown("AuraTarget", {
+            Text = T("Target Filter", "ประเภทเป้าหมาย"),
+            Values = { "All", "Normal", "Super", "Boss" },
+            Default = 1,
+            Callback = function(value) opt.AuraTarget = value end,
+        })
+        NumberInput(combatBox, "AuraBatch", T("Targets Per Sweep", "เป้าหมายต่อรอบ"), T("Number of enemies processed per tick", "จำนวนศัตรูที่ประมวลผลต่อรอบ"), 1)
+        combatBox:AddSlider("AuraBurst", {
+            Text = T("Attack Burst (Hits/Tick)", "จำนวนฮิตต่อรอบ"), Min = 1, Max = 50,
+            Default = opt.AuraBurst, Rounding = 0,
+            Callback = function(value) opt.AuraBurst = tonumber(value) or 10 end,
+        })
+        combatBox:AddSlider("AuraInterval", {
+            Text = T("Attack Interval", "ช่วงเวลาโจมตี"), Min = 0.05, Max = 1,
+            Default = opt.AuraInterval, Rounding = 2, Suffix = " s",
+            Callback = function(value) opt.AuraInterval = math.clamp(tonumber(value) or 0.12, 0.05, 1) end,
+        })
+        Check(combatBox, "AuraCritical", T("Critical Hits", "โจมตีคริติคอล"))
+        Check(combatBox, "AutoCollectDrops", T("Auto Collect Drops", "เก็บของดรอปอัตโนมัติ"))
+        Check(combatBox, "AuraSuper", T("Include Ore Bosses", "รวมบอสแร่"))
+        Feature(combatBox, "SuperLootAura", T("Kill Ore Boss", "ฆ่าบอสแร่"), T("Handles ore bosses instantly and collects confirmed drops", "จัดการบอสแร่ทันที และรับของที่ยืนยันแล้ว"), function(value)
+            if value then
+                xDTaraZ.SuperLoot.KillExisting()
+            else
+                for _, uuid in ipairs(State.LootQueue) do State.LootSeen[uuid] = nil end
+                table.clear(State.LootQueue)
+            end
         end)
         combatBox:AddButton({ Text = T("Exit Fight Now", "ออกจากการต่อสู้เดี๋ยวนี้"), Style = "Warning", Func = Action(xDTaraZ.Stage.ExitFight) })
 
@@ -3082,7 +4469,7 @@ local function BuildInterface()
                 opt.ForgeTarget = value or opt.ForgeTarget
             end,
         })
-        Pick(forgeBox, "ForgeOre", T("Ore To Use", "แร่ที่ใช้หลอม"), T("Pick an ore and it never runs out", "เลือกแร่แล้วไม่มีวันหมด"), xDTaraZ.Ore.ForgeChoices, nil)
+        Pick(forgeBox, "ForgeOre", T("Ore To Use", "แร่ที่ใช้หลอม"), T("Uses owned ore and farms missing stock", "ใช้แร่ที่มีและฟาร์มส่วนที่ขาด"), xDTaraZ.Ore.ForgeChoices, nil)
         Decorate("ForgeOre", OreId)
         Feature(forgeBox, "AutoForge", T("Auto Forge", "หลอมอัตโนมัติ"), T("Forges the target gear nonstop", "หลอมอุปกรณ์ที่เลือกไม่หยุด"))
         forgeBox:AddButton({ Text = T("Forge Now", "หลอมเดี๋ยวนี้"), Style = "Primary", Func = Action(xDTaraZ.Forge.Step) })
@@ -3097,7 +4484,7 @@ local function BuildInterface()
 
         local oreUseBox = tab:AddRightGroupbox(T("Ore Usage", "การใช้แร่"))
         oreUseBox:AddLabel(T("Used when Ore To Use is Owned ores", "ใช้ตอนแร่ที่ใช้หลอม = Owned ores"))
-        Toggle(oreUseBox, "BestOreFirst", T("Spend Best Ore First", "ใช้แร่ดีสุดก่อน"), T("Off = spend the weakest ore first", "ปิด = ใช้แร่ที่อ่อนที่สุดก่อน"))
+        Toggle(oreUseBox, "BestOreFirst", T("Spend High Tier Ore First", "ใช้แร่ระดับสูงก่อน"), T("Off = spend the weakest ore first", "ปิด = ใช้แร่ที่อ่อนที่สุดก่อน"))
         MultiSelect(oreUseBox, "ForgeRarities", T("Forge Ore Rarity", "rarity แร่ที่ใช้หลอม"), T("Only these ore rarities are used for forging", "ใช้แร่เฉพาะ rarity ที่เลือกในการหลอม"), rarityNames)
         NumberInput(oreUseBox, "KeepPerOre", T("Keep Per Ore", "เก็บแร่ไว้ชนิดละ"), T("Never forge below this amount of each ore", "ไม่หลอมจนแร่แต่ละชนิดต่ำกว่าจำนวนนี้"))
     end
@@ -3155,7 +4542,8 @@ local function BuildInterface()
         end
         Feature(seasonBox, "AutoSeason", T("Auto Season", "ซีซั่นอัตโนมัติ"), T("Daily ticket, pass rewards, spins and shop", "ตั๋วรายวัน รางวัลพาส สุ่ม และร้าน"))
         seasonBox:AddButton({ Text = T("Season Now", "ซีซั่นเดี๋ยวนี้"), Func = Action(xDTaraZ.Season.Step) })
-        Check(seasonBox, "SeasonSpin", T("Spin every ticket", "สุ่มตั๋วทุกใบ"))
+        Check(seasonBox, "SeasonSpin", T("Auto Spin Tickets", "สุ่มตั๋วอัตโนมัติ"))
+        NumberInput(seasonBox, "SeasonSpinBatch", T("Spins Per Cycle", "สุ่มต่อรอบ"), T("1–50; remaining tickets continue next cycle", "1–50 ตั๋วที่เหลือสุ่มรอบถัดไป"), 1)
         seasonBox:AddDropdown("SeasonGoods", {
             Text = T("Shop Items To Buy", "ของในร้านที่จะซื้อ"),
             Values = goodLabels,
@@ -3173,32 +4561,67 @@ local function BuildInterface()
     end
 
     local function BuildSpawn(tab)
-        local spawnBox = tab:AddLeftGroupbox(T("Spawn Items", "เสกของ"), nil, "OP")
-        Pick(spawnBox, "SpawnItem", T("Item", "ของ"), T("Ores and runes. Runes need at least one owned", "แร่และรูน รูนต้องมีอย่างน้อย 1 ชิ้น"), xDTaraZ.Spawn.Choices, true)
-        State.Decorators = { SpawnItem = function(label)
-            local picked = State.SpawnLabels and State.SpawnLabels[label]
-            return picked and picked.id
-        end }
-        Decorate("SpawnItem", State.Decorators.SpawnItem)
-        NumberInput(spawnBox, "SpawnAmount", T("Amount", "จำนวน"), nil, 1)
-        spawnBox:AddButton({ Text = T("Spawn", "เสก"), Style = "Primary", Func = function()
+        local spawnBox = tab:AddLeftGroupbox(T("Ore & Loot Spawner", "เสกแร่และไอเทม"), nil, "OP")
+        Feature(spawnBox, "TurboSpawn", T("Continuous Insane Turbo Spawner", "เสกของรัวแบบไม่จำกัดต่อเนื่อง"), T("Continuously streams selected or top tier loot directly into your backpack", "ฟาร์มเสกไอเทมที่เลือกหรือไอเทมระดับเทพเข้ากระเป๋าต่อเนื่องแบบไม่หยุด"))
+        Pick(spawnBox, "SpawnItem", T("Ore / Item / Pet", "แร่ / ไอเทม / สัตว์เลี้ยง"), T("Every ore, egg, fruit, rune and pet; farmed into inventory", "แร่ ไข่ ผลไม้ รูน และสัตว์เลี้ยงทั้งหมด ดึงเข้ากระเป๋าทันที"), xDTaraZ.Spawn.Choices, true)
+        Decorate("SpawnItem", function(label) local entry = State.SpawnLabels[label] return entry and entry.id end)
+        NumberInput(spawnBox, "SpawnAmount", T("Amount", "จำนวน"), T("Target amount to acquire (up to 1,000,000)", "จำนวนที่ต้องการได้ (สูงสุด 1,000,000)"), 1)
+        spawnBox:AddButton({ Text = T("Spawn Selected Item (Turbo)", "เสกไอเทมที่เลือก (เทอร์โบ)"), Style = "Primary", Func = Action(function()
             local picked = State.SpawnLabels[opt.SpawnItem]
             if not picked then return Notify("Pick an item first", "Warning") end
-            local label, amount = opt.SpawnItem, opt.SpawnAmount
-            task.defer(function()
-                local ok = xDTaraZ.Spawn.Give(picked.id, picked.kind, amount)
-                Notify(ok and ("Added %s %s"):format(xDTaraZ.Util.Abbreviate(amount), label) or "You need at least one of this item first", ok and "Success" or "Warning")
-            end)
-        end }):AddButton(RefreshButton("SpawnItem", xDTaraZ.Spawn.Choices))
-        spawnBox:AddButton({ Text = T("Dupe Whole Inventory", "ปั๊มของทั้งกระเป๋า"), Func = function()
-            local amount = opt.SpawnAmount
-            task.defer(function()
-                local touched = xDTaraZ.Spawn.DupeAll(amount)
-                Notify(("Added %s to %d stacks"):format(xDTaraZ.Util.Abbreviate(amount), touched), touched > 0 and "Success" or "Warning")
-            end)
-        end })
+            local acquired, outcome, reason = xDTaraZ.Spawn.Give(picked.id, picked.kind, opt.SpawnAmount)
+            Notify(acquired and ("Obtained %s"):format(xDTaraZ.Util.Abbreviate(outcome)) or (reason or "Done"), acquired and "Success" or "Warning")
+        end) }):AddButton(RefreshButton("SpawnItem", xDTaraZ.Spawn.Choices))
 
-        local gearBox = tab:AddLeftGroupbox(T("Spawn Gear", "เสกอาวุธและชุด"), nil, "OP")
+        spawnBox:AddButton({ Text = T("INSANE Farm Tier 40-48 God Ores", "เสกแร่เทพ Tier 40-48 แบบรัวคลั่ง"), Style = "Success", Func = LongAction("Max Ores", function()
+            return xDTaraZ.Stage.FarmMaxOres(50)
+        end, function(count)
+            return ("Acquired %d god tier ores directly!"):format(count or 0)
+        end) })
+
+        spawnBox:AddButton({ Text = T("INSANE Farm Pet Eggs & Fruits (Burst)", "เสกไข่สัตว์เลี้ยงและผลไม้แบบรัวคลั่ง"), Style = "Success", Func = LongAction("Eggs & Fruits", function()
+            local eggs, foods = xDTaraZ.Stage.FarmEggsAndFood(50)
+            return { eggs = eggs, foods = foods }
+        end, function(res)
+            if type(res) ~= "table" then return "No drops" end
+            return ("+%d eggs · +%d fruits"):format(res.eggs or 0, res.foods or 0)
+        end) })
+
+        spawnBox:AddButton({ Text = T("INSANE Farm Enhance Stones", "เสกหินตีบวกทั้งหมดแบบรัวคลั่ง"), Style = "Primary", Func = LongAction("Stones", function()
+            local before = xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_1")
+            xDTaraZ.Stage.FarmStones(xDTaraZ.Stage.Best())
+            task.wait(0.3)
+            return xDTaraZ.Data.Count(xDTaraZ.Data.Get(true), "EnhantStone_1") - before
+        end, function(gained) return ("+%d enhance stones"):format(gained or 0) end) })
+
+        spawnBox:AddButton({ Text = T("INSANE Stream All Drops (Burst)", "เสกและดึงดรอปทุกชนิดเข้ากระเป๋าแบบรัว"), Style = "Success", Func = LongAction("Stream Drops", function()
+            local eggs, foods = xDTaraZ.Stage.FarmEggsAndFood(50)
+            local ores = xDTaraZ.Stage.FarmMaxOres(50)
+            return { eggs = eggs, foods = foods, ores = ores }
+        end, function(res)
+            return ("+%d god ores · +%d eggs · +%d fruits"):format(res.ores or 0, res.eggs or 0, res.foods or 0)
+        end) })
+
+        local coinBox = tab:AddRightGroupbox(T("Season Coins & Tower", "เหรียญซีซั่นและหอคอย"), nil, "OP")
+        NumberInput(coinBox, "CoinTarget", T("Coins Target", "จำนวนเหรียญเป้าหมาย"), nil, 100)
+        coinBox:AddButton({ Text = T("Farm 50,000 Season Coins", "ฟาร์ม 50,000 เหรียญซีซั่นทันที"), Style = "Primary", Func = LongAction("Tower Coins", function()
+            return xDTaraZ.Tower.FarmCoins(opt.CoinTarget or 50000)
+        end, function(gained) return ("+%s season coins"):format(xDTaraZ.Util.Abbreviate(gained or 0)) end) })
+
+        coinBox:AddButton({ Text = T("Farm Rare Enhance Stones (Tier 2)", "ฟาร์มหินตีบวกหายาก (Tier 2)"), Func = LongAction("Tower Stones", function()
+            local before = xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_2")
+            xDTaraZ.Tower.FarmStep()
+            task.wait(0.3)
+            return xDTaraZ.Data.Count(xDTaraZ.Data.Get(true), "EnhantStone_2") - before
+        end, function(gained) return ("+%d rare stones"):format(gained or 0) end) })
+
+        local potionBox = tab:AddRightGroupbox(T("Potions", "ยา"), nil, "OP")
+        NumberInput(potionBox, "PotionAmount", T("Potion Amount", "จำนวนยา"), T("Amount to consume for extending active buffs", "จำนวนยาที่จะใช้เพื่อต่อเวลาบัฟ"), 1)
+        potionBox:AddButton({ Text = T("Extend All Buff Times", "เพิ่มเวลาบัฟยาทุกชนิด"), Style = "Primary", Func = LongAction("Potion Time", function()
+            return xDTaraZ.Potion.Extend(opt.PotionAmount)
+        end, function(changed) return ("Extended %d potion buffs"):format(changed or 0) end) })
+
+        local gearBox = tab:AddLeftGroupbox(T("Target Gear", "หลอมอาวุธและชุดเป้าหมาย"), nil, "OP")
         local function LoadGearList(slot)
             task.defer(function()
                 local ok, labels = pcall(xDTaraZ.Spawn.GearChoices, slot)
@@ -3238,73 +4661,133 @@ local function BuildInterface()
         })
         LoadGearList(opt.GearSlot)
         NumberInput(gearBox, "GearCopies", T("Copies", "จำนวนชิ้น"), nil, 1)
-        gearBox:AddButton({ Text = T("Spawn Gear", "เสกอุปกรณ์"), Style = "Primary", Func = LongAction("Index", function()
+        gearBox:AddButton({ Text = T("Forge Target Gear", "หลอมอุปกรณ์เป้าหมาย"), Style = "Primary", Func = LongAction("Index", function()
             local gear = State.GearLabels[opt.SpawnGear]
             return gear and xDTaraZ.Index.Hunt(gear, math.max(1, math.floor(opt.GearCopies)))
         end, function(got)
-            return got and "Spawned!" or "Not all copies this time, press again"
+            return got and "Target forged!" or "Not all copies this time, press again"
         end) })
-        gearBox:AddButton({ Text = T("Spawn Best Set", "เสกเซ็ตที่แรงสุด"), Func = LongAction("Index", xDTaraZ.Spawn.BestSet, function(made)
-            return ("Spawned and equipped %d/3 pieces"):format(made or 0)
+        gearBox:AddButton({ Text = T("Forge Set", "หลอมเซ็ตอุปกรณ์"), Func = LongAction("Index", xDTaraZ.Spawn.BestSet, function(made)
+            return ("Forged and equipped %d/3 pieces"):format(made or 0)
+        end) })
+        gearBox:AddButton({ Text = T("1-Click Forge & Max Full God Set", "หลอมและอัปเกรดเซ็ตเทพเต็มสูบ 1-คลิก"), Style = "Success", Func = LongAction("God Set", xDTaraZ.Spawn.FullGodSet, function(made)
+            return ("Forged, equipped, enhanced +20, and enchanted %d god pieces!"):format(made or 0)
         end) })
         gearBox:AddButton({ Text = T("Buy Exclusive Gear", "ซื้อของ Exclusive"), Func = LongAction("Tower", xDTaraZ.Season.BuyExclusive, function(bought)
             return (bought or 0) > 0 and ("Bought %d exclusive pieces"):format(bought) or "Already bought this refresh"
         end) })
 
-        local bonusBox = tab:AddRightGroupbox(T("Rolls, Tickets & Tokens", "เผ่า ตั๋ว และ Token"), nil, "OP")
-        local bonusByLabel = { ["Race Rolls"] = "Race", ["Season Tickets + Coins"] = "Season", ["Tokens"] = "Token" }
-        bonusBox:AddDropdown("BonusKind", {
-            Text = T("Item", "ของ"),
-            Values = { "Race Rolls", "Season Tickets + Coins", "Tokens" },
-            Default = 1,
-            NoSave = true,
-            Callback = function(value)
-                opt.BonusKind = bonusByLabel[value] or "Race"
+        local tokenBox = tab:AddRightGroupbox(T("Token Shop", "ร้าน Token"), nil, "OP")
+        Feature(tokenBox, "AutoTokenShop", T("Auto Mystery Shop", "ร้านลึกลับอัตโนมัติ"), T("Reveals cards and buys selected goods using owned tokens", "เปิดการ์ดและซื้อของที่เลือกด้วย Token ที่มี"))
+        Check(tokenBox, "TokenReveal", T("Auto Reveal Cards", "เปิดการ์ดอัตโนมัติ"))
+        Check(tokenBox, "TokenSkipOwned", T("Skip Owned Goods", "ข้ามของที่มีแล้ว"))
+        local tokenLabels, tokenIds = Source(xDTaraZ.TokenShop.Choices)
+        tokenBox:AddDropdown("TokenTargets", {
+            Text = T("Buy These Goods (Empty = All)", "ของที่จะซื้อ (ว่าง = ทั้งหมด)"), Values = tokenLabels,
+            Multi = true, Default = {}, Searchable = true,
+            Callback = function(selected)
+                local ids = {}
+                for label, on in pairs(selected) do if on and tokenIds[label] then ids[tokenIds[label]] = true end end
+                opt.TokenTargets = ids
             end,
         })
-        NumberInput(bonusBox, "BonusAmount", T("Amount", "จำนวน"), T("Up to 2K rolls/tickets or 20K tokens per press. Every press grows your save, keep it small", "ต่อครั้งสูงสุด 2K roll/ตั๋ว หรือ 20K Token ทุกครั้งที่กดทำให้เซฟใหญ่ขึ้น ใช้เท่าที่จำเป็น"), 1)
-        bonusBox:AddButton({ Text = T("Spawn", "เสก"), Style = "Primary", Func = LongAction("Spawn", function()
-            return xDTaraZ.Bonus.Spawn(opt.BonusKind, opt.BonusAmount) * Config.BonusRewards[opt.BonusKind].per
-        end, function(added)
-            if (added or 0) <= 0 then return "Patched by the latest game update" end
-            return ("+%s %s (stay 1 min so it saves)"):format(xDTaraZ.Util.Abbreviate(added), opt.BonusKind)
-        end) })
-
-        local tokenBox = tab:AddRightGroupbox(T("Token Shop", "ร้าน Token"), nil, "OP")
-        Feature(tokenBox, "AutoTokenShop", T("Auto Token Shop", "ซื้อร้าน Token อัตโนมัติ"), T("Buys every pass and pack in the shop for free", "ซื้อพาสและแพ็คทุกชิ้นในร้าน Token ให้ฟรี"))
         tokenBox:AddButton({ Text = T("Buy All Now", "ซื้อทั้งหมดเดี๋ยวนี้"), Func = LongAction("Token Shop", xDTaraZ.TokenShop.BuyAll, function(bought)
-            return (bought or 0) > 0 and ("Bought %d items"):format(bought) or "Everything here is already yours"
+            return (bought or 0) > 0 and ("Bought %d items"):format(bought) or "No purchase: check tokens, ownership and selected goods"
+        end) })
+    end
+
+    local function BuildPet(tab)
+        local hatchBox = tab:AddLeftGroupbox(T("Egg Hatchery & Farm", "ฟักไข่และฟาร์มไข่"), nil, "OP")
+        Feature(hatchBox, "AutoHatchEgg", T("Auto Hatch When Ready", "เปิดไข่อัตโนมัติเมื่อครบเวลา"), T("Watches incubator and opens ready eggs the exact second timer hits 0, then incubates next", "ตรวจตู้ฟักตลอดเวลาและเปิดไข่ทันทีที่เวลาครบ 0 วิ แล้วใส่ฟองใหม่ต่อเนื่อง"))
+        Check(hatchBox, "HatchBestFirst", T("Hatch Rare Eggs First", "ฟักไข่หายากก่อน (Egg2 > Egg1)"))
+        Toggle(hatchBox, "SkipEggAnim", T("Skip Egg Cutscene", "ข้ามฉากเปิดไข่"), T("Hides the egg opening cutscene so farming never pauses", "ปิดฉากแอนิเมชันเปิดไข่เพื่อไม่ให้ขัดจังหวะฟาร์ม"), function(value)
+            xDTaraZ.Util.Try(xDTaraZ.Pet.MuteAnim, value)
+        end)
+        hatchBox:AddButton({ Text = T("Open Ready Eggs Now", "เปิดไข่ที่พร้อมเดี๋ยวนี้"), Style = "Primary", Func = Action(function()
+            local opened, hatched = xDTaraZ.Pet.HatchStep()
+            Notify(opened > 0 and ("Opened %d ready eggs!"):format(opened) or "No eggs ready yet (timer still counting down)", opened > 0 and "Success" or "Info")
+        end) })
+        hatchBox:AddButton({ Text = T("Farm & Fill Crown Eggs (Egg2)", "ฟาร์มและเติมไข่ Egg2 เต็มตู้"), Style = "Success", Func = LongAction("Egg2 Farm", function()
+            xDTaraZ.Pet.TrimEggs("Egg2")
+            xDTaraZ.Stage.FarmTurbo("Egg2", "Egg", 15)
+            local opened, hatched = xDTaraZ.Pet.HatchStep()
+            return hatched
+        end, function(hatched)
+            return ("Incubated %d new eggs!"):format(hatched or 0)
+        end) })
+        hatchBox:AddButton({ Text = T("Refill 20 Eggs & Fruits Burst", "เติมไข่และผลไม้ 20 ชิ้น (เต็มกระเป๋า)"), Style = "Primary", Func = LongAction("Pet Farm", function()
+            local eggs, foods = xDTaraZ.Stage.FarmEggsAndFood(20)
+            return { eggs = eggs, foods = foods }
+        end, function(res)
+            if type(res) ~= "table" then return "No drops" end
+            return ("+%d eggs · +%d fruits"):format(res.eggs or 0, res.foods or 0)
         end) })
 
-        local potionBox = tab:AddRightGroupbox(T("Potions", "ยา"), nil, "OP")
-        potionBox:AddButton({ Text = T("Max Potion Buffs", "บัฟยาเต็มทั้งปี"), Style = "Primary", Func = LongAction("Potion", xDTaraZ.Potion.MaxBuffs, function(count)
-            return (count or 0) > 0 and ("%d potion buffs active for about a year"):format(count) or "Own at least one potion first"
-        end) })
-        potionBox:AddButton({ Text = T("Add 100K Potions", "เพิ่มยา 100K ขวด"), Func = Action(function()
-            for _, potionId in ipairs(xDTaraZ.Potion.Owned()) do
-                xDTaraZ.Potion.Add(potionId, Config.PotionStack)
-            end
+        local cleanBox = tab:AddLeftGroupbox(T("Pet Bag Cleanup", "จัดการกระเป๋าสัตว์เลี้ยง"))
+        Feature(cleanBox, "AutoSellPet", T("Auto Clean Pet & Egg Bag", "เคลียร์กระเป๋าสัตว์เลี้ยงและไข่อัตโนมัติ"), T("Deletes low-rarity pets while protecting equipped and top pets", "ลบสัตว์เลี้ยงระดับต่ำโดยล็อกตัวที่ใส่และตัวเก่งสุดไว้"))
+        local defaultDelete = { "Common", "Uncommon", "Rare", "Epic" }
+        opt.DeletePetRarities = xDTaraZ.Util.AllSet(defaultDelete)
+        cleanBox:AddDropdown("DeletePetRarities", {
+            Text = T("Delete Pet Rarities", "ลบสัตว์เลี้ยงระดับ"),
+            Description = T("Only delete unequipped pets of these rarities", "ลบเฉพาะสัตว์เลี้ยงที่ไม่ได้ใส่ในระดับที่เลือก"),
+            Values = rarityNames,
+            Multi = true,
+            Default = defaultDelete,
+            Callback = function(selected)
+                opt.DeletePetRarities = selected
+            end,
+        })
+        NumberInput(cleanBox, "KeepBestPets", T("Keep Top Pets", "เก็บสัตว์เลี้ยงตัวหลักไว้"), T("Always keeps at least this many highest-scoring pets", "เก็บสัตว์เลี้ยงที่คะแนนสูงสุดไว้อย่างน้อยจำนวนนี้"), 1)
+        Check(cleanBox, "AutoDeleteEggs", T("Trim Excess Unhatched Eggs", "ลบไข่ส่วนเกินอัตโนมัติ"))
+        NumberInput(cleanBox, "KeepPerEgg", T("Keep Per Egg Type", "เก็บไข่ไว้ชนิดละ"), T("Deletes unhatched eggs above this count per type", "ลบไข่ที่ยังไม่ได้ฟักที่เกินจำนวนนี้ต่อชนิด"), 1)
+        cleanBox:AddButton({ Text = T("Clean Pet & Egg Bag Now", "เคลียร์กระเป๋าเดี๋ยวนี้"), Func = Action(function()
+            local delPets, delEggs = xDTaraZ.Pet.CleanBag()
+            Notify(("Removed %d pets · %d eggs"):format(delPets or 0, delEggs or 0), "Info")
         end) })
 
-        local coinBox = tab:AddRightGroupbox(T("Season Coins", "เหรียญซีซั่น"), nil, "OP")
-        NumberInput(coinBox, "CoinTarget", T("Amount", "จำนวน"), nil, 1)
-        coinBox:AddButton({ Text = T("Add Season Coins", "เพิ่มเหรียญซีซั่น"), Style = "Primary", Func = LongAction("Tower", function()
-            return xDTaraZ.Tower.FarmCoins(opt.CoinTarget)
-        end, function(gained) return ("+%s season coins"):format(xDTaraZ.Util.Abbreviate(gained or 0)) end) })
+        local petBox = tab:AddRightGroupbox(T("Pet Loadout & Feeding", "ใส่สัตว์เลี้ยงและให้อาหาร"), nil, "OP")
+        Feature(petBox, "AutoEquipPet", T("Auto Equip Pets", "ใส่สัตว์เลี้ยงอัตโนมัติ"), T("Always equips your highest-scoring pets for maximum stat boosts", "ใส่สัตว์เลี้ยงที่คะแนนสูงสุดเสมอเพื่อรับบัฟสูงสุด"))
+        petBox:AddButton({ Text = T("Equip Best Pets Now", "ใส่สัตว์เลี้ยงเทพเดี๋ยวนี้"), Style = "Primary", Func = Action(function()
+            local changed = xDTaraZ.Pet.EquipBest()
+            Notify(changed > 0 and ("Equipped %d pet(s)"):format(changed) or "Already equipping top pet(s)", "Info")
+        end) })
+        petBox:AddDivider()
+        Feature(petBox, "AutoFeedPet", T("Auto Feed Fruits", "ให้อาหารผลไม้อัตโนมัติ"), T("Feeds owned fruits to your top pets until they reach max level", "ป้อนผลไม้ที่มีให้สัตว์เลี้ยงตัวหลักจนเลเวลตัน"))
+        petBox:AddButton({ Text = T("Feed Pet Once", "ป้อนผลไม้หนึ่งครั้ง"), Func = Action(function()
+            local fed = xDTaraZ.Pet.FeedBest()
+            Notify(fed > 0 and "Fed highest-priority pet!" or "No pet needs EXP or no fruit owned", fed > 0 and "Success" or "Info")
+        end) })
+        petBox:AddButton({ Text = T("Feed All Pets to Max Level Now", "ป้อนผลไม้ให้อิ่มจนเวลตันทุกตัวทันที"), Style = "Success", Func = Action(function()
+            local totalFed = xDTaraZ.Pet.FeedAllMax()
+            Notify(totalFed > 0 and ("Fed pets %d times to max level!"):format(totalFed) or "Pets already max level or out of fruits", totalFed > 0 and "Success" or "Info")
+        end) })
 
-        local stoneBox = tab:AddRightGroupbox(T("Enhance Stones", "หินตีบวก"))
-        stoneBox:AddButton({ Text = T("Farm Enhance Stones", "ฟาร์มหินตีบวก"), Style = "Primary", Func = LongAction("Stones", function()
-            local before = xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_1")
-            xDTaraZ.Stage.FarmStones(xDTaraZ.Stage.Best())
-            task.wait(0.5)
-            return xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_1") - before
-        end, function(gained) return ("+%d enhance stones"):format(gained or 0) end) })
-        stoneBox:AddButton({ Text = T("Farm Rare Stones", "ฟาร์มหินตีบวกหายาก"), Func = LongAction("Tower", function()
-            local before = xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_2")
-            xDTaraZ.Tower.FarmStep()
-            task.wait(0.5)
-            return xDTaraZ.Data.Count(xDTaraZ.Data.Get(), "EnhantStone_2") - before
-        end, function(gained) return ("+%d rare stones"):format(gained or 0) end) })
+        local deployBox = tab:AddRightGroupbox(T("Pet Expedition", "ส่งสัตว์เลี้ยงสำรวจ"))
+        Feature(deployBox, "AutoDeployPet", T("Auto Deploy & Claim Rewards", "ส่งสำรวจและรับรางวัลอัตโนมัติ"), T("Deploys best available pets on expeditions and claims all loot", "ส่งสัตว์เลี้ยงสำรวจและรับของรางวัลทั้งหมดอัตโนมัติ"))
+        deployBox:AddButton({ Text = T("Deploy & Claim Now", "ส่งสำรวจและรับรางวัลเดี๋ยวนี้"), Style = "Success", Func = Action(function()
+            xDTaraZ.Util.Remote("Pet", "ClaimAllDeployRewardRE"):FireServer()
+            local deployed = xDTaraZ.Pet.DeployStep()
+            Notify(("Claimed rewards · Deployed %d pet(s)"):format(deployed or 0), "Success")
+        end) })
+
+        local targetBox = tab:AddRightGroupbox(T("Target Pet Hunt & Auto-Hatch", "ล่าสัตว์เลี้ยงตามสั่ง"), nil, "OP")
+        Pick(targetBox, "TargetPet", T("Target Pet", "สัตว์เลี้ยงที่ต้องการ"), T("Select any pet to hunt: farms its parent egg and auto-hatches", "เลือกสัตว์เลี้ยงตัวที่ต้องการ ระบบจะฟาร์มไข่ตรงใบและฟักเมื่อครบเวลา"), xDTaraZ.Pet.Choices, true)
+        Decorate("TargetPet", function(label) return State.PetTargetLabels and State.PetTargetLabels[label] end)
+        NumberInput(targetBox, "TargetPetCopies", T("Target Copies", "จำนวนที่ต้องการได้"), T("Number of target pets to acquire", "จำนวนตัวที่ต้องการเสกล่า"), 1)
+        Feature(targetBox, "AutoChaseTargetPet", T("Auto Chase Target Pet", "ล่าสัตว์เลี้ยงตัวนี้อัตโนมัติ"), T("Automatically farms required eggs, incubates, opens on 0s, max-feeds, and locks", "ฟาร์มไข่ตรงใบ ใส่ตู้ฟัก เปิดทันทีที่ครบเวลา อัปเวลตันและล็อคตัวอัตโนมัติ"))
+        Check(targetBox, "AutoLockTargetPet", T("Auto Lock Target Pet", "ล็อคสัตว์เลี้ยงที่ได้อัตโนมัติ"))
+        targetBox:AddButton({ Text = T("Farm & Incubate Target Egg Now", "ฟาร์มและใส่ไข่เป้าหมายเข้าตู้เดี๋ยวนี้"), Style = "Primary", Func = LongAction("Pet Hunt", function()
+            local picked = State.PetTargetLabels and State.PetTargetLabels[opt.TargetPet]
+            if not picked then return nil end
+            local gained, msg = xDTaraZ.Pet.FarmAndHatchTarget(picked, opt.TargetPetCopies or 1)
+            return msg or (gained > 0 and ("Acquired %d!"):format(gained) or "Incubating")
+        end, function(msg)
+            return tostring(msg or "Done")
+        end) }):AddButton(RefreshButton("TargetPet", xDTaraZ.Pet.Choices))
+        targetBox:AddButton({ Text = T("Lock All High-Tier Pets", "ล็อคสัตว์เลี้ยงระดับแรร์ทั้งหมด"), Style = "Success", Func = Action(function()
+            local locked = xDTaraZ.Pet.LockAllGodPets()
+            Notify(("Locked %d high-tier pets"):format(locked or 0), "Success")
+        end) })
     end
 
     local function BuildPlayer(tab)
@@ -3369,27 +4852,27 @@ local function BuildInterface()
                 elseif outcome == "got" then
                     Notify(("Got %s after %d rolls!"):format(tostring(detail), used), "Success", 8)
                 elseif outcome == "empty" then
-                    Notify("Out of race rolls. Turn on Spawn Rolls When Out", "Warning")
+                    Notify("Out of race rolls. Enable Buy Rolls When Empty or collect season rewards", "Warning")
                 elseif outcome == "blocked" then
                     Notify("Can't roll: " .. tostring(detail), "Warning")
                 end
                 Later(TurnOff, "AutoRace")
             end)
         end)
-        Check(raceBox, "RaceRefill", T("Spawn Rolls When Out", "หมดแล้วเสก roll เพิ่ม"))
+        Check(raceBox, "RaceBuyRolls", T("Buy Rolls When Empty", "ซื้อ roll เมื่อหมด"))
         Check(raceBox, "RaceLock", T("Lock Slot When Found", "ได้แล้วล็อกช่อง"))
         Check(raceBox, "RaceProtect", T("Never Replace Mythic+", "ไม่สุ่มทับเผ่า Mythic ขึ้นไป"))
         Check(raceBox, "RaceAnim", T("Show Roll Animation", "แสดงฉากสุ่ม"))
-        Feature(raceBox, "AutoBestRace", T("Use Best Race Slot", "ใช้ช่องเผ่าที่ดีสุด"), T("Switches to your rarest race", "สลับไปใช้เผ่าที่หายากที่สุด"))
+        Feature(raceBox, "AutoBestRace", T("Auto Equip Rare Race", "ใส่อัตโนมัติตามความหายาก"), T("Switches to your rarest race", "สลับไปใช้เผ่าที่หายากที่สุด"))
         raceBox:AddButton({ Text = T("Switch Now", "สลับเดี๋ยวนี้"), Func = Action(function()
-            Notify(xDTaraZ.Race.EquipBest() and "Switched race slot" or "Already on your best race")
+            Notify(xDTaraZ.Race.EquipBest() and "Switched race slot" or "Already on your rarest race")
         end) })
 
         local moveBox = tab:AddRightGroupbox(T("Movement", "การเคลื่อนที่"))
         HotkeyFeature(moveBox, "SpeedOn", T("Speed", "ความเร็ว"), nil, xDTaraZ.Movement.Apply)
         moveBox:AddSlider("WalkSpeed", {
             Text = T("Walk Speed", "ความเร็วเดิน"),
-            Min = 16, Max = 200, Default = opt.WalkSpeed, Rounding = 0,
+            Min = 16, Max = 250, Default = opt.WalkSpeed, Rounding = 0,
             Callback = function(value)
                 opt.WalkSpeed = value
                 xDTaraZ.Movement.Apply()
@@ -3420,20 +4903,26 @@ local function BuildInterface()
 
     local function BuildSettings(window)
         local settingsTab = window:AddSettingsTab()
+        local runtimeBox = settingsTab:AddLeftGroupbox(T("Performance", "ประสิทธิภาพ"))
+        NumberInput(runtimeBox, "ParallelJobs", T("Concurrent Tasks", "จำนวนงานพร้อมกัน"), T("1–8; inventory changes run in order", "1–8 งาน การแก้กระเป๋าทำตามลำดับ"), 1)
+        NumberInput(runtimeBox, "WorkerLimit", T("Workers Per Task", "จำนวน worker ต่องาน"), T("1–32; lower this for slow connections", "1–32 ลดเมื่อเน็ตช้า"), 1)
+        NumberInput(runtimeBox, "JobTimeout", T("Task Timeout (seconds)", "เวลารองานสูงสุด (วินาที)"), nil, 5)
+        runtimeBox:AddButton({ Text = T("Retry Stopped Features", "ลองฟีเจอร์ที่หยุดอีกครั้ง"), Func = function()
+            table.clear(xDTaraZ.GameLib.Failed)
+            table.clear(State.RemoteCache)
+            for key, info in pairs(State.JobStats) do
+                if not info.ok and Options[key] then
+                    State.Failures[key] = nil
+                    State.LastRun[key] = nil
+                    Options[key]:SetValue(true)
+                end
+            end
+            Notify("Retry requested", "Info")
+        end })
         local sessionBox = settingsTab:AddRightGroupbox(T("Session", "เซสชัน"))
         Toggle(sessionBox, "AutoRejoin", T("Auto Rejoin", "เข้าเกมใหม่อัตโนมัติ"), T("Rejoins the game by itself after a disconnect", "หลุดแล้วเข้าเกมใหม่เอง"))
         Toggle(sessionBox, "LowGraphics", T("FPS Boost", "เพิ่ม FPS"), T("Turns off 3D rendering to save CPU and GPU", "ปิดการแสดงผล 3D ประหยัด CPU/GPU"), xDTaraZ.Session.SetLowGraphics)
         sessionBox:AddButton({ Text = T("Rejoin Now", "เข้าเกมใหม่เดี๋ยวนี้"), Func = Action(xDTaraZ.Session.Rejoin) })
-        NumberInput(sessionBox, "OldVersion", T("Old Server Version", "เวอร์ชันเซิร์ฟเก่า"), T("Hops until it lands in a server still on this version", "ย้ายเซิร์ฟไปเรื่อยๆ จนเจอเซิร์ฟที่ยังเป็นเวอร์ชันนี้"), 1)
-        sessionBox:AddButton({ Text = T("Find Old Server", "หาเซิร์ฟเวอร์ชันเก่า"), Func = Action(function()
-            local target = math.floor(tonumber(opt.OldVersion) or Config.OldServerVersion)
-            if game.PlaceVersion <= target then return Notify(("Already on version %d"):format(game.PlaceVersion), "Success") end
-            local outcome = xDTaraZ.Session.FindOldServer(target)
-            Notify(outcome == "searching" and ("Looking for version %d (now %d)"):format(target, game.PlaceVersion) or "Server list unavailable, try again", outcome == "searching" and "Info" or "Warning")
-        end) }):AddButton({ Text = T("Stop", "หยุด"), Func = Action(function()
-            xDTaraZ.Session.SaveOldSearch(nil)
-            Notify("Old server search stopped", "Info")
-        end) })
         sessionBox:AddButton({ Text = T("Hop To Emptiest Server", "ย้ายไปเซิร์ฟคนน้อยสุด"), Func = Action(function()
             if not xDTaraZ.Session.HopSmallest() then Notify("Server list unavailable, try again", "Warning") end
         end) })
@@ -3465,14 +4954,16 @@ local function BuildInterface()
     local function UpdateStatus()
         local ok, profile = pcall(xDTaraZ.Data.Get)
         if not (ok and profile and statusLabel) then return end
-        local eco = profile.Eco
-        local line = ("Level %d · Rebirth %d · Coins %s"):format(eco.level, eco.rebirth, xDTaraZ.Util.Abbreviate(eco.coin))
-        if State.TowerLoot > 0 then
+        local eco = profile.Eco or {}
+        local line = ("Level %d · Rebirth %d · Coins %s"):format(tonumber(eco.level) or 1, tonumber(eco.rebirth) or 0, xDTaraZ.Util.Abbreviate(eco.coin or 0))
+        if (State.TowerLoot or 0) > 0 then
             line ..= ("\nTower loot x%d"):format(State.TowerLoot)
         end
         Later(statusLabel.SetText, statusLabel, line)
-        Later(gearLabel.SetText, gearLabel, "Equipped: " .. xDTaraZ.Gear.EquippedNames(profile))
-        Later(taskLabel.SetText, taskLabel, "Working on: " .. TaskText())
+        local gearLine = "Equipped: " .. tostring(xDTaraZ.Gear.EquippedNames(profile) or "None")
+        local petLine = tostring(xDTaraZ.Pet.StatusText(profile) or "")
+        Later(gearLabel.SetText, gearLabel, gearLine .. "\n" .. petLine)
+        Later(taskLabel.SetText, taskLabel, "Working on: " .. tostring(TaskText() or "Idle"))
     end
 
     local function BuildTabs()
@@ -3480,19 +4971,21 @@ local function BuildInterface()
         Window:AddTabSection(T("Farm", "ฟาร์ม"))
         local MainTab = Window:AddTab(T("Main", "หลัก"), "house", T("Status, all-in-one mode and rewards", "สถานะ โหมดทำทุกอย่าง และรางวัล"))
         local GearTab = Window:AddTab(T("Gear", "อุปกรณ์"), "sword", T("Best gear, equip and enhance", "อุปกรณ์ที่ดีสุด ใส่ของ และตีบวก"))
+        local PetTab = Window:AddTab(T("Pets & Eggs", "สัตว์เลี้ยงและไข่"), "heart", T("Hatch eggs, equip, feed, deploy and clean pet bag", "ฟักไข่ ใส่ ให้อาหาร ส่งสำรวจ และเคลียร์กระเป๋าสัตว์เลี้ยง"))
         local FarmTab = Window:AddTab(T("Combat & Farm", "ต่อสู้และฟาร์ม"), "swords", T("Stages, monsters, bosses and index", "ด่าน มอนสเตอร์ บอส และสมุดสะสม"))
         local ForgeTab = Window:AddTab(T("Forge", "หลอม"), "zap", T("Forge gear from any ore", "หลอมอุปกรณ์จากแร่ไหนก็ได้"))
         local SellTab = Window:AddTab(T("Sell", "ขาย"), "upload", T("Sell gear by type and rarity", "ขายอุปกรณ์ตามประเภทและ rarity"))
         Window:AddTabSection(T("Progress", "ความคืบหน้า"))
         local ProgressTab = Window:AddTab(T("Upgrade & Rebirth", "อัปเกรดและรีเบิร์ธ"), "sliders-horizontal", T("Training, rebirth and upgrades", "ฝึก รีเบิร์ธ และอัปเกรด"))
         local TowerTab = Window:AddTab(T("Tower", "หอคอย"), "shield", T("Tower loot and season pass", "ของจากหอคอย และซีซั่นพาส"))
-        local SpawnTab = Window:AddTab(T("Spawn Items", "เสกของ"), "target", T("Ores, runes and enhance stones", "แร่ รูน และหินตีบวก"))
+        local SpawnTab = Window:AddTab(T("Spawn Items", "เสกของ"), "target", T("Target forging, shops, potions and tower coins", "หลอมเป้าหมาย ร้าน ยา และเหรียญหอคอย"))
         Window:AddTabSection(T("Other", "อื่นๆ"))
         local PlayerTab = Window:AddTab(T("Player", "ผู้เล่น"), "user", T("Race, movement and survival", "เผ่า การเคลื่อนที่ และเอาตัวรอด"))
 
         local sections = {
             { BuildMain, MainTab },
             { BuildGear, GearTab },
+            { BuildPet, PetTab },
             { BuildFarm, FarmTab },
             { BuildForge, ForgeTab },
             { BuildSell, SellTab },
@@ -3538,21 +5031,6 @@ local function BuildInterface()
             Notify("Loaded", "Success")
             xDTaraZ.Util.Try(Library.LoadAutoloadConfig, Library)
             if xDTaraZ.Boss.HopWanted() and Options.BossHop then Options.BossHop:SetValue(true) end
-            local search = xDTaraZ.Session.OldSearch()
-            if search then
-                task.delay(Config.OldServerGap, function()
-                    local outcome = xDTaraZ.Session.FindOldServer()
-                    if outcome == "found" then
-                        Notify(("Found a version %d server!"):format(game.PlaceVersion), "Success", 10)
-                    elseif outcome == "gaveup" then
-                        Notify(("No version %d server after %d hops"):format(search.target, Config.OldServerTries), "Warning", 10)
-                    elseif outcome == "nolist" then
-                        Notify("Server list unavailable, press Find Old Server again", "Warning")
-                    else
-                        Notify(("Version %d, hop %d/%d"):format(game.PlaceVersion, search.tries + 1, Config.OldServerTries), "Info")
-                    end
-                end)
-            end
         end,
     })
 end

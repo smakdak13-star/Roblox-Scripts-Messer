@@ -85,6 +85,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 - **Auto World Boss**: joins, kills and takes the reward card
 - **Boss Server Hop**: hops to servers where the boss is up, waits if it spawns within your set time, opens the rewards before moving on
 - Auto sell, auto equip, auto train, click, rebirth, upgrades, best race slot
+- **Auto Incubate & Hatch Pets**: watches egg timers, hatches automatically when ready, auto-refills incubation slots, targets top-tier pets and trims surplus eggs
 - Item pictures in every item list, hop to the emptiest server, save and return position
 - **Kaitun**: does all of the above at once
 
