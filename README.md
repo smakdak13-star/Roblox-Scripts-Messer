@@ -7,7 +7,7 @@
 **Roblox scripts by xDTaraZ**
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/FHVfmeSceA)
-[![Games](https://img.shields.io/badge/Games-14-E8A04C?style=for-the-badge&logo=roblox&logoColor=white)](#-supported-games)
+[![Games](https://img.shields.io/badge/Games-15-E8A04C?style=for-the-badge&logo=roblox&logoColor=white)](#-supported-games)
 [![Keyless](https://img.shields.io/badge/Key-None-2EA043?style=for-the-badge)](#-how-to-use)
 
 </div>
@@ -28,6 +28,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 
 | Game | Highlights |
 |:--|:--|
+| **[Build An Ant Empire](#-build-an-ant-empire)** | Kaitun, food farming, auto sell, auto roll, best ants, pool and stat upgrades |
 | **[+1 TNT Mining](#-1-tnt-mining)** | Smart auto mine, instant collect, sell anywhere, Kaitun |
 | **[Loot To Forge](#%EF%B8%8F-loot-to-forge)** | Max gear, spawn items, free Token Shop passes, auto race roll, boss hop, Kaitun |
 | **[Open Sea For Animals](#-open-sea-for-animals)** | Loot every wave from your base, auto hatch, sell filters, Kaitun |
@@ -42,6 +43,24 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/xDTaraZz/Roblox-Scrip
 | **[+1 Stone Skipping](#-1-stone-skipping)** | Smart Kaitun, auto throw and train, best stones, auto rebirth, fast hatch, redeem codes |
 | **[Break and Steal an Egg](#-break-and-steal-an-egg)** | Instant steal, break eggs in any zone, upgrades-only filter, auto upgrades, bat troll, Kaitun |
 | **[Build the Pyramid!](#-build-the-pyramid)** | Smart Progression, faster auto farm, pets and hatching, full ESP, skip cutscenes |
+
+---
+
+### 🐜 Build An Ant Empire
+
+<details>
+<summary><b>Features</b></summary>
+
+- **Kaitun**: collects food, sells, rolls ants and works through affordable upgrades
+- **Food Farming**: collect worker ant food, carry food and auto sell with a minimum price
+- **Ants**: auto roll, claim by rarity and equip the best ants
+- **Progression**: pool and stat upgrades with a cash reserve and upgrade priority
+- Claim ready online rewards, travel to available destinations and return to your saved position
+- Walk speed, fly, noclip, fullbright and ESP controls
+- **Stop All** cancels automation and restores movement settings
+- MarioBanner, English/Thai menus and saved configurations
+
+</details>
 
 ---
 

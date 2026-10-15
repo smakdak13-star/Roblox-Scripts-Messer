@@ -6,6 +6,7 @@ local BASE = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/hea
 local DISCORD = "discord.gg/FHVfmeSceA"
 
 local GAMES = {
+    [10436530264] = "Build An Ant Empire",
     [10418224975] = "TNT Mining",
     [10684750879] = "Loot To Forge",
     [10765091041] = "Open Sea For Animals",
