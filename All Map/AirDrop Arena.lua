@@ -287,6 +287,7 @@ xDTaraZ.Options = {
     SilentTargetLock = false, -- УЛУЧШЕНО: Фиксация цели
     Ragebot = false,
     RageMaxDistance = 1000,
+    RagePriority = "Crosshair", -- НОВОЕ: Приоритет цели для Ragebot
     TargetBots = true,
     AimBone = "Auto", -- УЛУЧШЕНО: По умолчанию Auto
     AimPriority = "Crosshair",
@@ -1019,12 +1020,18 @@ function xDTaraZ.Combat.Step()
         return
     end
 
-    local target, part, aimPos
-    if opts.Ragebot then
-        target, part, aimPos = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Rage"), state.LockedTarget)
-    elseif opts.SilentAim then
-        target, part, aimPos = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Silent"), state.LockedTarget)
+    function xDTaraZ.Target.Profile(kind)
+    local opts, profile = xDTaraZ.Options, xDTaraZ.Target.Profiles[kind]
+    if kind == "Silent" then
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.SilentFov, "Head", opts.SilentPriority, opts.SilentMaxDistance
+    elseif kind == "Rage" then
+        -- ИЗМЕНЕНО: теперь берем приоритет из настроек (по умолчанию Crosshair)
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = 0, "Head", opts.RagePriority, opts.RageMaxDistance
+    else
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.AimFov, opts.AimBone, opts.AimPriority, opts.AimMaxDistance
     end
+    return profile
+end
     
     state.AimHead = target and xDTaraZ.Target.Part(target, "Head", Workspace.CurrentCamera.CFrame.Position)
     state.AimBody = target and xDTaraZ.Target.Part(target, "Torso", Workspace.CurrentCamera.CFrame.Position)
@@ -2473,6 +2480,7 @@ function xDTaraZ.UI.BuildCombat(window)
     local rage = tab:AddLeftGroupbox(T("Ragebot", "Ragebot"), "bomb")
     rage:AddToggle("Ragebot", { Text = T("Ragebot", "Ragebot"), Description = T("Shoots every enemy in sight on its own", "Стреляет по всем врагам в поле зрения") })
         :AddKeyPicker("RagebotKey", { Default = "None", Mode = "Toggle" })
+    rage:AddDropdown("RagePriority", { Text = T("Target priority", "Приоритет цели"), Values = priorities, Default = "Crosshair" }) -- НОВОЕ
     rage:AddSlider("RageMaxDistance", { Text = T("Max distance", "Макс. дистанция"), Min = 50, Max = 2000, Default = 1000, Suffix = "m" })
     Library.Compat.NeedCap("Ragebot", "Namecall")
 
