@@ -151,7 +151,7 @@ xDTaraZ.Config = {
     UpdateLog = {
         { "2026-10-03", "Classic Mario Hub UI is back\nBetter executor support\nFixed Noclip restore\nAuto-detect Jobs & Teleports" },
     },
-    UiSource = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/ui.lua",
+    UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     SaveFolder = "Driving Empire",
     LoadTimeout = 10,
     AlertTries = 20,

@@ -156,7 +156,7 @@ xDTaraZ.Config = {
     Discord = "https://discord.gg/FHVfmeSceA",
     GameId = 10436530264,
     PlaceId = 78490532994307,
-    UiSource = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/ui.lua",
+    UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     UpdateLog = {
         { "2026-10-15", "Added Build An Ant Empire support\nKaitun, food farming and auto sell\nAuto roll, rarity filters and best ants\nPool and stat upgrades with a cash reserve\nMarioBanner and reliable Stop All" },
     },

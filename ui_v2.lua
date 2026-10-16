@@ -29,7 +29,7 @@ local Config = {
     AssetDir = "mariohub/assets",
     ConfigRoot = "mariohub/configs",
     KeyCache = "mariohub/key.txt",
-    DefaultAssets = { logo = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/main/logo.png" },
+    DefaultAssets = { logo = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/main/logo.png" },
     FontDir = "mariohub/fonts",
     HttpTimeout = 8,
     AssetWait = 0.25,
