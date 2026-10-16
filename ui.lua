@@ -255,7 +255,7 @@ local Sprite = {}
 local Assets = { Overrides = {}, Cache = {}, InFlight = {} }
 local Fonts = { Texts = {}, Thai = nil }
 local Particles = { Pool = {}, Enabled = true }
-local Lang = { Bound = {}, Listeners = setmetatable({}, { __mode = "k" }), InstanceListeners = {} }
+local Lang = { Bound = {}, Listeners = setmetatable({}, { __mode = "k" }), InstanceListeners = {}, Codes = { "EN", "TH", "RU" }, Labels = { EN = "English", TH = "ไทย", RU = "Русский" } }
 local Theme = { Colors = {}, Bound = {}, Renderers = setmetatable({}, { __mode = "k" }), InstanceRenderers = {} }
 local Layout = { Dirty = {}, All = setmetatable({}, { __mode = "k" }), Measured = {}, MeasuredCount = 0 }
 local Icons = {}
@@ -1019,59 +1019,63 @@ function Theme.OnRender(owner, render)
 end
 
 Lang.Strings = {
-    Search = { EN = "Search...", TH = "ค้นหา..." },
-    Confirm = { EN = "Click again to confirm", TH = "กดอีกครั้งเพื่อยืนยัน" },
-    None = { EN = "None", TH = "ไม่มี" },
-    NoResults = { EN = "No matches", TH = "ไม่พบรายการ" },
-    Settings = { EN = "Settings", TH = "ตั้งค่า" },
-    SettingsDesc = { EN = "Interface, language and configs", TH = "หน้าตา ภาษา และคอนฟิก" },
-    Interface = { EN = "Interface", TH = "หน้าตา" },
-    Language = { EN = "Language", TH = "ภาษา" },
-    ThemeName = { EN = "Theme", TH = "ธีม" },
-    Scale = { EN = "UI scale", TH = "ขนาด UI" },
-    MenuKey = { EN = "Menu key", TH = "ปุ่มเปิดเมนู" },
-    Watermark = { EN = "Watermark", TH = "วอเตอร์มาร์ก" },
-    WatermarkDesc = { EN = "Hub name, FPS, ping and play time", TH = "ชื่อฮับ FPS ปิง และเวลาที่เล่น" },
-    FloatButton = { EN = "Mobile button", TH = "ปุ่มลอยมือถือ" },
-    FloatDesc = { EN = "Floating block that opens the menu", TH = "กล่อง ? ลอยสำหรับเปิดปิดเมนู" },
-    Configs = { EN = "Configs", TH = "คอนฟิก" },
-    ConfigName = { EN = "Config name", TH = "ชื่อคอนฟิก" },
-    SavedConfigs = { EN = "Saved configs", TH = "คอนฟิกที่บันทึกไว้" },
-    Save = { EN = "Save", TH = "บันทึก" },
-    Load = { EN = "Load", TH = "โหลด" },
-    Delete = { EN = "Delete", TH = "ลบ" },
-    Refresh = { EN = "Refresh", TH = "รีเฟรช" },
-    SetAutoload = { EN = "Load on start", TH = "โหลดอัตโนมัติ" },
-    Autoload = { EN = "Autoload: %s", TH = "โหลดอัตโนมัติ: %s" },
-    PickConfig = { EN = "Type or select a config name first", TH = "พิมพ์หรือเลือกชื่อคอนฟิกก่อน" },
-    NoFileApi = { EN = "This executor cannot save files", TH = "executor นี้บันทึกไฟล์ไม่ได้" },
-    ConfigMissing = { EN = "Config not found", TH = "ไม่พบคอนฟิก" },
-    ConfigBroken = { EN = "Config file is damaged", TH = "ไฟล์คอนฟิกเสีย" },
-    About = { EN = "About", TH = "เกี่ยวกับ" },
-    Unload = { EN = "Unload hub", TH = "ปิดสคริปต์" },
-    Rejoin = { EN = "Rejoin", TH = "เข้าเซิร์ฟใหม่" },
+    Search = { EN = "Search...", TH = "ค้นหา...", RU = "Поиск..." },
+    Confirm = { EN = "Click again to confirm", TH = "กดอีกครั้งเพื่อยืนยัน", RU = "Нажмите ещё раз для подтверждения" },
+    None = { EN = "None", TH = "ไม่มี", RU = "Нет" },
+    NoResults = { EN = "No matches", TH = "ไม่พบรายการ", RU = "Совпадений нет" },
+    Settings = { EN = "Settings", TH = "ตั้งค่า", RU = "Настройки" },
+    SettingsDesc = { EN = "Interface, language and configs", TH = "หน้าตา ภาษา และคอนฟิก", RU = "Интерфейс, язык и конфиги" },
+    Interface = { EN = "Interface", TH = "หน้าตา", RU = "Интерфейс" },
+    Language = { EN = "Language", TH = "ภาษา", RU = "Язык" },
+    ThemeName = { EN = "Theme", TH = "ธีม", RU = "Тема" },
+    Scale = { EN = "UI scale", TH = "ขนาด UI", RU = "Масштаб UI" },
+    MenuKey = { EN = "Menu key", TH = "ปุ่มเปิดเมนู", RU = "Клавиша меню" },
+    Watermark = { EN = "Watermark", TH = "วอเตอร์มาร์ก", RU = "Ватермарк" },
+    WatermarkDesc = { EN = "Hub name, FPS, ping and play time", TH = "ชื่อฮับ FPS ปิง และเวลาที่เล่น", RU = "Название хаба, FPS, пинг и время в игре" },
+    FloatButton = { EN = "Mobile button", TH = "ปุ่มลอยมือถือ", RU = "Кнопка для телефона" },
+    FloatDesc = { EN = "Floating block that opens the menu", TH = "กล่อง ? ลอยสำหรับเปิดปิดเมนู", RU = "Плавающий блок, открывающий меню" },
+    Configs = { EN = "Configs", TH = "คอนฟิก", RU = "Конфиги" },
+    ConfigName = { EN = "Config name", TH = "ชื่อคอนฟิก", RU = "Имя конфига" },
+    SavedConfigs = { EN = "Saved configs", TH = "คอนฟิกที่บันทึกไว้", RU = "Сохранённые конфиги" },
+    Save = { EN = "Save", TH = "บันทึก", RU = "Сохранить" },
+    Load = { EN = "Load", TH = "โหลด", RU = "Загрузить" },
+    Delete = { EN = "Delete", TH = "ลบ", RU = "Удалить" },
+    Refresh = { EN = "Refresh", TH = "รีเฟรช", RU = "Обновить" },
+    SetAutoload = { EN = "Load on start", TH = "โหลดอัตโนมัติ", RU = "Автозагрузка" },
+    Autoload = { EN = "Autoload: %s", TH = "โหลดอัตโนมัติ: %s", RU = "Автозагрузка: %s" },
+    PickConfig = { EN = "Type or select a config name first", TH = "พิมพ์หรือเลือกชื่อคอนฟิกก่อน", RU = "Сначала введите или выберите имя конфига" },
+    NoFileApi = { EN = "This executor cannot save files", TH = "executor นี้บันทึกไฟล์ไม่ได้", RU = "Этот экзекьютор не умеет сохранять файлы" },
+    ConfigMissing = { EN = "Config not found", TH = "ไม่พบคอนฟิก", RU = "Конфиг не найден" },
+    ConfigBroken = { EN = "Config file is damaged", TH = "ไฟล์คอนฟิกเสีย", RU = "Файл конфига повреждён" },
+    About = { EN = "About", TH = "เกี่ยวกับ", RU = "О скрипте" },
+    Unload = { EN = "Unload hub", TH = "ปิดสคริปต์", RU = "Выгрузить хаб" },
+    Rejoin = { EN = "Rejoin", TH = "เข้าเซิร์ฟใหม่", RU = "Перезти сервер" },
     IntroSteps = {
         EN = { "Warming up the warp pipe...", "Collecting coins...", "Building the castle...", "Let's-a go!" },
         TH = { "กำลังอุ่นท่อวาร์ป...", "กำลังเก็บเหรียญ...", "กำลังสร้างปราสาท...", "ลุยกันเลย!" },
+        RU = { "Разогреваю трубу-переход...", "Собираю монетки...", "Строю замок...", "Погнали!" },
     },
-    Ready = { EN = "Ready. Press %s to toggle the menu.", TH = "พร้อมแล้ว กด %s เพื่อเปิดปิดเมนู" },
-    ReadyTouch = { EN = "Ready. Tap the ? block to toggle the menu.", TH = "พร้อมแล้ว แตะกล่อง ? เพื่อเปิดปิดเมนู" },
-    Hidden = { EN = "Menu hidden. Press %s to open.", TH = "ซ่อนเมนูแล้ว กด %s เพื่อเปิด" },
-    Session = { EN = "TIME", TH = "เวลา" },
-    Empty = { EN = "Nothing here yet", TH = "ยังไม่มีรายการ" },
-    Particles = { EN = "Ambient particles", TH = "ละอองตกแต่ง" },
-    ParticlesDesc = { EN = "Floating sparkles behind the menu", TH = "ประกายลอยด้านหลังเมนู" },
-    Device = { EN = "Device: %s", TH = "อุปกรณ์: %s" },
+    Ready = { EN = "Ready. Press %s to toggle the menu.", TH = "พร้อมแล้ว กด %s เพื่อเปิดปิดเมนู", RU = "Готово. Нажмите %s, чтобы открыть меню." },
+    ReadyTouch = { EN = "Ready. Tap the ? block to toggle the menu.", TH = "พร้อมแล้ว แตะกล่อง ? เพื่อเปิดปิดเมนู", RU = "Готово. Нажмите на блок ?, чтобы открыть меню." },
+    Hidden = { EN = "Menu hidden. Press %s to open.", TH = "ซ่อนเมนูแล้ว กด %s เพื่อเปิด", RU = "Меню скрыто. Нажмите %s, чтобы открыть." },
+    Session = { EN = "TIME", TH = "เวลา", RU = "ВРЕМЯ" },
+    Empty = { EN = "Nothing here yet", TH = "ยังไม่มีรายการ", RU = "Здесь пока пусто" },
+    Particles = { EN = "Ambient particles", TH = "ละอองตกแต่ง", RU = "Фоновые частицы" },
+    ParticlesDesc = { EN = "Floating sparkles behind the menu", TH = "ประกายลอยด้านหลังเมนู", RU = "Искры, летящие за меню" },
+    Device = { EN = "Device: %s", TH = "อุปกรณ์: %s", RU = "Устройство: %s" },
+    Autoloaded = { EN = "Autoloaded: %s", TH = "โหลดอัตโนมัติ: %s", RU = "Автозагружено: %s" },
+    AutoloadFailed = { EN = "Autoload failed: %s", TH = "โหลดอัตโนมัติไม่สำเร็จ: %s", RU = "Ошибка автозагрузки: %s" },
+    EspPreview = { EN = "ESP Preview", TH = "ตัวอย่าง ESP", RU = "Предпросмотр ESP" },
 }
 
 function Lang.HasThai(text)
     return text:find("\224[\184\185]") ~= nil
 end
 
---@return string localized for active language from {EN,TH}, "English / Thai", or plain string
+--@return string localized for active language from {EN,TH,RU}, "English / Thai", or plain string
 function Lang.Resolve(spec)
     if type(spec) == "table" then
-        return spec[State.Language] or spec.EN or spec.TH or ""
+        return spec[State.Language] or spec.EN or spec.TH or spec.RU or ""
     end
     if type(spec) ~= "string" then
         return spec == nil and "" or tostring(spec)
@@ -1093,7 +1097,7 @@ end
 
 function Lang.SearchText(spec)
     if type(spec) == "table" then
-        return ((spec.EN or "") .. " " .. (spec.TH or "")):lower()
+        return ((spec.EN or "") .. " " .. (spec.TH or "") .. " " .. (spec.RU or "")):lower()
     end
     return tostring(spec or ""):lower()
 end
@@ -1115,8 +1119,39 @@ function Lang.OnChange(owner, callback)
     registry[owner] = callback
 end
 
+function Lang.IsValid(code)
+    for _, value in ipairs(Lang.Codes) do
+        if value == code then
+            return true
+        end
+    end
+    return false
+end
+
+--@return string|nil Canonical code for "EN"/"TH"/"RU", a language label, or nil
+function Lang.NormalizeCode(input)
+    local text = tostring(input or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local upper = text:upper()
+    for _, code in ipairs(Lang.Codes) do
+        if upper == code then
+            return code
+        end
+    end
+    local lowered = text:lower()
+    if lowered:find("rus") or lowered:find("рус") then
+        return "RU"
+    end
+    if lowered:find("thai") or lowered:find("ไทย") then
+        return "TH"
+    end
+    if lowered:find("english") or lowered:find("англ") then
+        return "EN"
+    end
+    return nil
+end
+
 function Lang.Set(code)
-    if code ~= "EN" and code ~= "TH" then
+    if not Lang.IsValid(code) then
         return
     end
     State.Language = code
@@ -6311,12 +6346,14 @@ function Window:BuildPill(parent, text)
 end
 
 function Window:BuildLanguagePill(parent)
-    local pill = Draw.Box("Frame", { Size = UDim2.fromOffset(74, 28), LayoutOrder = 1, Parent = parent }, "Shadow", "Outline", UDim.new(1, 0), 2)
+    local codes = Lang.Codes
+    local width = 34 + #codes * 36
+    local pill = Draw.Box("Frame", { Size = UDim2.fromOffset(width, 28), LayoutOrder = 1, Parent = parent }, "Shadow", "Outline", UDim.new(1, 0), 2)
     pill.BackgroundTransparency = 0.35
     local segments = {}
-    for index, code in ipairs({ "EN", "TH" }) do
-        local segment = Draw.Box("TextButton", { Position = UDim2.new((index - 1) * 0.5, 2, 0, 2), Size = UDim2.new(0.5, -4, 1, -4), Parent = pill }, "Coin", nil, UDim.new(1, 0))
-        local label = Draw.Text({ Text = code, Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Parent = segment }, "Body", 13, "White")
+    for index, code in ipairs(codes) do
+        local segment = Draw.Box("TextButton", { Position = UDim2.new((index - 1) / #codes, 2, 0, 2), Size = UDim2.new(1 / #codes, -4, 1, -4), Parent = pill }, "Coin", nil, UDim.new(1, 0))
+        local label = Draw.Text({ Text = code, Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center, Parent = segment }, "Body", 12, "White")
         segment.Activated:Connect(function()
             Library:SetLanguage(code)
         end)
@@ -7801,7 +7838,7 @@ function Visuals.PreviewBuild()
         return
     end
     local panel = Draw.Box("Frame", { Name = "EspPreview", Position = UDim2.new(1, 6, 0, 0), Size = UDim2.new(0, 230, 1, -Config.Window.Shadow), BackgroundTransparency = 0, Visible = false, ClipsDescendants = true, Parent = window.Root }, "Backdrop", "Outline", Config.Window.Radius, Config.Window.Stroke)
-    local title = Draw.Text({ Position = UDim2.fromOffset(12, 8), Size = UDim2.new(1, -24, 0, 22) }, "Display", Util.TextSize("Group"), "Text", { EN = "ESP Preview", TH = "ตัวอย่าง ESP" })
+    local title = Draw.Text({ Position = UDim2.fromOffset(12, 8), Size = UDim2.new(1, -24, 0, 22) }, "Display", Util.TextSize("Group"), "Text", Lang.Strings.EspPreview)
     title.Parent = panel
     local view = Draw.New("ViewportFrame", { Position = UDim2.fromOffset(10, 38), Size = UDim2.new(1, -20, 1, -48), BackgroundColor3 = Color3.fromRGB(18, 18, 24), BackgroundTransparency = 0.15, Ambient = Color3.fromRGB(180, 180, 190), LightColor = Color3.new(1, 1, 1), Parent = panel })
     Draw.Corner(view, 8)
@@ -8558,14 +8595,18 @@ function Compat.Warm()
     end
 end
 
---@return {EN,TH} Formatted bilingual string from Lang.Strings
+--@return {EN,TH,RU} Formatted localized string from Lang.Strings
 function Lang.Format(key, ...)
-    local spec = Lang.Strings[key] or { EN = key, TH = key }
+    local spec = Lang.Strings[key] or { EN = key, TH = key, RU = key }
     local args = table.pack(...)
-    return {
-        EN = string.format(spec.EN, table.unpack(args, 1, args.n)),
-        TH = string.format(spec.TH or spec.EN, table.unpack(args, 1, args.n)),
-    }
+    local out = {}
+    for _, code in ipairs(Lang.Codes) do
+        if spec[code] then
+            out[code] = string.format(spec[code], table.unpack(args, 1, args.n))
+        end
+    end
+    out.EN = out.EN or spec.EN or key
+    return out
 end
 
 function Configs.SetFolder(name)
@@ -8667,8 +8708,8 @@ function Configs.BuildSection(group)
         end
         local ok, reason = handler(name)
         local action = Lang.Strings[actionKey]
-        local message = ok and { EN = action.EN .. ": " .. name, TH = action.TH .. ": " .. name }
-            or { EN = action.EN .. " failed: " .. tostring(reason), TH = action.TH .. " ไม่สำเร็จ: " .. tostring(reason) }
+        local message = ok and { EN = action.EN .. ": " .. name, TH = action.TH .. ": " .. name, RU = action.RU .. ": " .. name }
+            or { EN = action.EN .. " failed: " .. tostring(reason), TH = action.TH .. " ไม่สำเร็จ: " .. tostring(reason), RU = action.RU .. " не выполнено: " .. tostring(reason) }
         Library:Notify(Lang.Strings.Configs, message, 3, ok and "Success" or "Error")
         list:SetValues(Configs.List())
     end
@@ -8698,10 +8739,10 @@ function Window:AddSettingsTab()
     local interface = tab:AddLeftGroupbox(Lang.Strings.Interface, "mushroom")
     interface:AddDropdown("MarioLanguage", {
         Text = Lang.Strings.Language,
-        Values = { "English", "ไทย" },
-        Default = State.Language == "TH" and "ไทย" or "English",
+        Values = { Lang.Labels.EN, Lang.Labels.TH, Lang.Labels.RU },
+        Default = Lang.Labels[State.Language] or Lang.Labels.EN,
         Callback = function(value)
-            Library:SetLanguage(value == "ไทย" and "TH" or "EN")
+            Library:SetLanguage(value)
         end,
     })
     interface:AddDropdown("MarioTheme", { Text = Lang.Strings.ThemeName, Values = Themes.Order, Default = State.ThemeName, Callback = function(name)
@@ -8730,11 +8771,12 @@ end
 
 function Library:CreateWindow(options)
     options = options or {}
-    local language = options.Language
-    if language == "Auto" then
-        language = tostring(LocalPlayer.LocaleId):sub(1, 2) == "th" and "TH" or "EN"
+    local language = Lang.NormalizeCode(options.Language)
+    if options.Language == "Auto" or not language then
+        local locale = tostring(LocalPlayer.LocaleId):sub(1, 2):lower()
+        language = (locale == "th" and "TH") or (locale == "ru" and "RU") or "EN"
     end
-    State.Language = language == "TH" and "TH" or "EN"
+    State.Language = language
     State.UserScale = math.clamp(options.Scale or 1, Config.ScaleRange.Min, Config.ScaleRange.Max)
     Theme.Apply(options.Theme or Config.SeasonTheme or "Overworld")
     Assets.Configure(Config.DefaultAssets)
@@ -8791,10 +8833,10 @@ function Library:CreateWindow(options)
             Title = window.Title,
             SubTitle = window.SubTitle,
             Steps = {
-                { Label = { EN = steps.EN[1], TH = steps.TH[1] } },
-                { Label = { EN = steps.EN[2], TH = steps.TH[2] } },
-                { Label = { EN = steps.EN[3], TH = steps.TH[3] }, Run = WaitBuilt },
-                { Label = { EN = steps.EN[4], TH = steps.TH[4] } },
+                { Label = { EN = steps.EN[1], TH = steps.TH[1], RU = steps.RU[1] } },
+                { Label = { EN = steps.EN[2], TH = steps.TH[2], RU = steps.RU[2] } },
+                { Label = { EN = steps.EN[3], TH = steps.TH[3], RU = steps.RU[3] }, Run = WaitBuilt },
+                { Label = { EN = steps.EN[4], TH = steps.TH[4], RU = steps.RU[4] } },
             },
             OnDone = Reveal,
         })
@@ -8804,13 +8846,14 @@ function Library:CreateWindow(options)
 end
 
 function Library:SetLanguage(code)
-    if code ~= "EN" and code ~= "TH" then
+    code = Lang.NormalizeCode(code)
+    if not code then
         return
     end
     Lang.Set(code)
     local option = self.Options.MarioLanguage
     if option then
-        option.Value = code == "TH" and "ไทย" or "English"
+        option.Value = Lang.Labels[code]
         option:Render()
     end
 end
@@ -8870,7 +8913,7 @@ function Library:LoadAutoloadConfig()
         return
     end
     local ok, reason = Configs.Load(name)
-    local message = ok and { EN = "Autoloaded: " .. name, TH = "โหลดอัตโนมัติ: " .. name } or { EN = "Autoload failed: " .. tostring(reason), TH = "โหลดอัตโนมัติไม่สำเร็จ: " .. tostring(reason) }
+    local message = ok and Lang.Format("Autoloaded", name) or Lang.Format("AutoloadFailed", tostring(reason))
     self:Notify(Lang.Strings.Configs, message, 3, ok and "Success" or "Error")
 end
 
