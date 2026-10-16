@@ -25,8 +25,8 @@ local Config = {
     AssetDir = "mariohub/assets",
     ConfigRoot = "mariohub/configs",
     DefaultAssets = {
-        logo = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/main/logo.png",
-        logo_halloween = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/main/logo_halloween.png",
+        logo = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/main/logo.png",
+        logo_halloween = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/main/logo_halloween.png",
     },
     SeasonTheme = "Halloween",
     FontDir = "mariohub/fonts",
@@ -252,7 +252,7 @@ local Reactive = {}
 local Tailwind = {}
 local Draw = {}
 local Sprite = {}
-local Assets = { Overrides = {}, Cache = {} }
+local Assets = { Overrides = {}, Cache = {}, InFlight = {} }
 local Fonts = { Texts = {}, Thai = nil }
 local Particles = { Pool = {}, Enabled = true }
 local Lang = { Bound = {}, Listeners = setmetatable({}, { __mode = "k" }), InstanceListeners = {} }
@@ -665,6 +665,26 @@ function Util.CustomAsset(path)
     end
     local ok, asset = pcall(getcustomasset, path)
     return ok and type(asset) == "string" and asset:find("^rbxasset") and asset or nil
+end
+
+-- Map an absolute workspace path to a Workspace-relative one (getcustomasset contract).
+-- Config.AssetDir is relative, so this only normalizes caller-supplied paths.
+function Util.WorkspacePath(path)
+    if type(path) ~= "string" then
+        return path
+    end
+    local ok, ws = pcall(function()
+        return typeof(workspace) == "Workspace" and workspace:GetFullName() or game:GetService("Workspace"):GetFullName()
+    end)
+    if not ok or type(ws) ~= "string" or ws == "" then
+        return path
+    end
+    local normalized = path:gsub("\\", "/")
+    local prefix = ws:gsub("\\", "/") .. "/"
+    if normalized:sub(1, #prefix):lower() == prefix:lower() then
+        return normalized:sub(#prefix + 1)
+    end
+    return path
 end
 
 ---isfile through SafeFile would read a stub's nil as "exists".
@@ -1391,13 +1411,38 @@ function Draw.Emblem(parent, size)
     local holder = Draw.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Parent = parent })
     local picture = Draw.New("ImageLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Fit, Visible = false, Parent = holder })
     local drawn = Draw.DrawnEmblem(holder, size)
-    Theme.OnRender(holder, function()
-        local content = (Theme.Colors.Logo and Assets.Resolve(Theme.Colors.Logo)) or Assets.Resolve("logo")
+    -- Resolve logo assets once per theme switch instead of every render frame:
+    -- Assets.Download does synchronous HTTP + disk IO and must not run in RenderStepped.
+    local refreshQueued = false
+    local attempts = 0
+    local function refreshLogo()
+        refreshQueued = false
+        if not holder.Parent then return end
+        local key = Theme.Colors.Logo or "logo"
+        local content = Assets.Resolve(key)
+        if content == nil and attempts < 3 then
+            -- transient download failure: retry later instead of caching the miss forever
+            attempts += 1
+            Assets.Retry(key)
+            task.delay(2, function()
+                if holder.Parent then
+                    refreshQueued = true
+                    task.spawn(refreshLogo)
+                end
+            end)
+        end
         picture.Image = content or ""
         picture.Visible = content ~= nil
         drawn.Visible = content == nil
         picture.Size = UDim2.fromScale(Theme.Colors.Logo and 1.25 or 1, Theme.Colors.Logo and 1.25 or 1)
+    end
+    Theme.OnRender(holder, function()
+        if not refreshQueued then
+            refreshQueued = true
+            task.spawn(refreshLogo)
+        end
     end)
+    refreshLogo()
     Anim.Loop("Emblem", picture, { Rotation = 6 }, 1.6, "Sine", true)
     return holder
 end
@@ -1450,8 +1495,10 @@ function Assets.Configure(map)
         return
     end
     for name, source in pairs(map) do
-        Assets.Overrides[tostring(name):lower()] = source
-        Assets.Cache[tostring(name):lower()] = nil
+        local key = tostring(name):lower()
+        Assets.Overrides[key] = source
+        Assets.Cache[key] = nil
+        Assets.Warm(key)
     end
 end
 
@@ -1467,8 +1514,40 @@ function Assets.Download(name, url)
         end
         Util.EnsureFolder(Config.AssetDir)
         SafeFile(writefile, path, body)
+        if not Util.Exists(path) then
+            return nil
+        end
     end
-    return Util.CustomAsset(path)
+    local content = Util.CustomAsset(path)
+    if content == nil then
+        -- Filesystem assets unavailable on this executor: fall back to the
+        -- published decal id so the logo still loads at startup.
+        local fallback = Assets.Cache["__fallback_" .. name]
+        if fallback ~= false then
+            if fallback == nil then
+                fallback = (type(getassetid) == "function") and tostring(getassetid(url)) or false
+                if fallback and (fallback == "nil" or not fallback:match("^%d+$")) then
+                    fallback = false
+                end
+                Assets.Cache["__fallback_" .. name] = fallback
+            end
+            if fallback then
+                content = "rbxassetid://" .. fallback
+            end
+        end
+    end
+    return content
+end
+
+-- Re-check a failed download once (transient HTTP failure must not disable the logo forever)
+function Assets.Retry(key)
+    if Assets.Cache[key] ~= false then
+        return
+    end
+    local source = Assets.Overrides[key]
+    if type(source) == "string" and source:match("^https?://") then
+        Assets.Cache[key] = nil
+    end
 end
 
 --@return Resolved asset content ID override, or nil for procedural sprites
@@ -1486,11 +1565,40 @@ function Assets.Resolve(name)
         content = source
     elseif type(source) == "string" and source:match("^https?://") then
         content = Assets.Download(key, source)
-    elseif type(source) == "string" and Util.Exists(source) then
-        content = Util.CustomAsset(source)
+    elseif type(source) == "string" and Util.Exists(Util.WorkspacePath(source)) then
+        content = Util.CustomAsset(Util.WorkspacePath(source))
     end
     Assets.Cache[key] = content or false
     return content
+end
+
+-- Background pre-download for web assets: the first Resolve after this never
+-- blocks on HTTP (fixes missing logo/sprites during startup and intro).
+function Assets.Warm(name)
+    local key = tostring(name):lower()
+    local source = Assets.Overrides[key]
+    if type(source) ~= "string" or not source:match("^https?://") then
+        return
+    end
+    if Assets.Cache[key] ~= nil or Assets.InFlight[key] then
+        return
+    end
+    Assets.InFlight[key] = true
+    task.spawn(function()
+        local ok, err = pcall(Assets.Resolve, key)
+        Assets.InFlight[key] = nil
+        if not ok then
+            warn("[Mario Hub UI] asset warm failed: " .. key .. " " .. tostring(err))
+        end
+    end)
+end
+
+function Assets.WarmAll()
+    for key in pairs(Assets.Overrides) do
+        if not key:find("^__") then
+            Assets.Warm(key)
+        end
+    end
 end
 
 Sprite.Palette = {

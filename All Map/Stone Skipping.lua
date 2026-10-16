@@ -154,7 +154,7 @@ xDTaraZ.Config = {
         { "2026-10-04", "Auto Pet Index\nAuto Fuse (Golden & Diamond)\nRemoved keybinds from auto features" },
         { "2026-10-03", "Classic Mario Hub UI is back\nBetter executor support\nBug fixes & better UI" },
     },
-    UiSource = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/ui.lua",
+    UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     SaveFolder = "Stone Skipping",
     LoadTimeout = 30,
     RequireTimeout = 3,

@@ -163,9 +163,9 @@ xDTaraZ.Config = {
         { "2026-10-13", "Smart Progression and faster Auto Farm\nPets, hatching limits and full ESP\nAuto Skip Cutscene and Spectate\nFixed pool training, respawn and camera recovery\nImproved upgrade guards, rejoin and cleanup" },
         { "2026-10-10", "Updated for the new game version\nFaster farm loop\nAuto Free Gift and Train While Waiting\nStop targets for farm and training\nFixed unloading, Balanced training and upgrade checks" },
     },
-    UiSource = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/ui.lua",
+    UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     ReloadSource = [[
-local url = "https://raw.githubusercontent.com/xDTaraZz/Roblox-Scripts/refs/heads/main/loader.lua"
+local url = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/loader.lua"
 local ok, body = pcall(game.HttpGet, game, url)
 if not (ok and type(body) == "string") then
     local requester = request or http_request or (syn and syn.request) or (http and http.request)
