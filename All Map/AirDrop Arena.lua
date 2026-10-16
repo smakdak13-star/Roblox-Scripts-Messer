@@ -157,7 +157,7 @@ xDTaraZ.Config = {
     UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     Discord = "https://discord.gg/FHVfmeSceA",
     UpdateLog = {
-        { "2026-10-16", "Ragebot fires on its own again: auto reload / ammo refill when the mag is empty, direct shot fallback on executors without hook support\nRagebot: target priority now works (Crosshair / Health / Distance)\nNew bone picker for Rage, Silent and Aimbot with \"Auto\" option\nSilent Aim: separate target priority + body part\nRussian UI language added in Settings" },
+        { "2026-10-16", "FIXED CRITICAL REGRESSION: all aim features work again (rage/silent/aimbot/triggerbot), target picking restored to original logic\nRagebot fires on its own again: auto reload / ammo refill when the mag is empty, direct shot fallback on executors without hook support\nRagebot: target priority now works (Crosshair / Health / Distance)\nNew bone picker for Rage, Silent and Aimbot with \"Auto\" option\nSilent Aim: separate target priority + body part\nRussian UI language added in Settings" },
         { "2026-10-10", "Updated for Season 5\nAuto Lottery in Auto Claim\nTeleport to and spectate any player\nItem pictures in every item list\nHalloween menu" },
         { "2026-10-05", "Fixed shots not killing: ammo spam, knife in hand\nAuto reload between fights, Auto ammo\nHealth bars on ESP now go down\nNew Rewards tab and Triggerbot\nSilent Aim, Aimbot, Ragebot each have their own settings" },
     },
@@ -715,11 +715,12 @@ function xDTaraZ.Target.Lock(keep)
     local opts = xDTaraZ.Options
     local targetToCheck = (opts.AimSticky and keep) or nil
     
-    local model, part, aimPos = xDTaraZ.Target.Pick(profile, targetToCheck)
+    local model, part = xDTaraZ.Target.Pick(profile, targetToCheck)
     
-    if model and part and aimPos then
+    -- Как в оригинале: возвращаем часть тела (BasePart) — Step сохраняет её в LockPart
+    if model and part and part.Parent then
         xDTaraZ.State.LockPart = part
-        return aimPos
+        return part
     end
     
     xDTaraZ.State.LockPart = nil
@@ -1034,7 +1035,8 @@ function xDTaraZ.Combat.Clear()
 end
 
 function xDTaraZ.Combat.Step()
-    local opts, state = xDTaraZ.State, xDTaraZ.Options
+    local opts = xDTaraZ.Options
+    local state = xDTaraZ.State
     local combat = xDTaraZ.Combat
     xDTaraZ.Combat.UpdateCircles()
 
@@ -1045,34 +1047,46 @@ function xDTaraZ.Combat.Step()
         return
     end
 
-    -- ИСПРАВЛЕНО: цель раньше не выбиралась вообще (target был nil) —
-    -- теперь Ragebot сам ищет цель с учетом приоритета из UI
-    local target
+    -- ВОССТАНОВЛЕНО как в оригинале: цель ищут и Ragebot, и Silent Aim.
+    -- Pick возвращает (model, part, aimPos); target должен быть моделью.
+    local target, targetPart
     if opts.Ragebot then
-        target = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Rage"))
-    elseif state.LockedTarget and state.LockedTarget.Parent then
-        target = state.LockedTarget
+        target, targetPart = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Rage"))
+    elseif opts.SilentAim then
+        target, targetPart = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Silent"))
     end
-    
-    state.AimHead = target and xDTaraZ.Target.Part(target, "Head", Workspace.CurrentCamera.CFrame.Position)
-    state.AimBody = target and xDTaraZ.Target.Part(target, "Torso", Workspace.CurrentCamera.CFrame.Position)
+
+    local cam = Workspace.CurrentCamera
+    local camPos = cam.CFrame.Position
+    state.AimHead = target and xDTaraZ.Target.Part(target, "Head", camPos)
+    state.AimBody = target and (targetPart or xDTaraZ.Target.Part(target, "Torso", camPos))
     state.AimEntity = target and target:GetAttribute("EntityId")
     state.Target = target
 
-    local locked = state.LockPart and state.LockPart.Parent
-    local newAimPos = opts.Aimbot and xDTaraZ.Target.Lock(locked)
-    if newAimPos then
-        state.LockPart = xDTaraZ.Target.Part(state.Target, opts.AimBone, Workspace.CurrentCamera.CFrame.Position)
-    else
-        state.LockPart = nil
+    -- Фиксация цели: удерживаем ту же модель, пока она всё ещё валидная
+    if (opts.SilentTargetLock or opts.AimSticky) and state.LockedTarget and state.LockedTarget.Parent and state.LockedTarget ~= target then
+        local kept = xDTaraZ.Target.Check(state.LockedTarget, xDTaraZ.Target.Profile(opts.Ragebot and "Rage" or "Silent"), cam, camPos, cam.ViewportSize / 2)
+        if kept then
+            target = state.LockedTarget
+            state.Target = target
+            state.AimHead = xDTaraZ.Target.Part(target, "Head", camPos)
+            state.AimBody = xDTaraZ.Target.Part(target, "Torso", camPos)
+            state.AimEntity = target:GetAttribute("EntityId")
+        else
+            state.LockedTarget = nil
+        end
     end
+
+    -- Aimbot: плавная наводка камеры (Lock возвращает часть тела, как в оригинале)
+    local locked = state.LockPart and state.LockPart.Parent
+    state.LockPart = opts.Aimbot and xDTaraZ.Target.Lock(locked) or nil
 
     local trigger = opts.Triggerbot and xDTaraZ.Combat.TriggerWant()
     local held = xDTaraZ.Combat.HeldGun()
     local empty = held ~= nil and rawget(held, "ammo") == 0
     
-    -- ИСПРАВЛЕНО: цель Ragebot запоминается, чтобы Silent Aim тоже стрелял по ней
-    if opts.Ragebot then state.LockedTarget = target end
+    -- Фиксация цели: запоминаем выбранную модель для rage/silent lock
+    if opts.Ragebot or opts.SilentTargetLock then state.LockedTarget = target end
     local wantRage = opts.Ragebot and target ~= nil
     local shouldFire = not empty and (wantRage or trigger == true)
     xDTaraZ.Combat.Fire(shouldFire)
@@ -1163,11 +1177,11 @@ function xDTaraZ.Combat.LockCamera()
     
     local opts = xDTaraZ.Options
     local smooth = math.max(opts.AimSmooth, 1)
-    local dt = task.wait() or 0.016
+    -- ИСПРАВЛЕНО: здесь был task.wait() внутри RenderStepped — он ломал кадры
     
     local look
     if opts.AimSmoothType == "Exponential" then
-        local alpha = 1 - math.exp(-smooth * dt * 15)
+        local alpha = 1 - math.exp(-(smooth * 0.35))
         look = current:Lerp(want, math.clamp(alpha, 0, 1)).Unit
     else
         look = current:Lerp(want, 1 / smooth).Unit
