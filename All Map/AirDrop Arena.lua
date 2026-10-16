@@ -288,6 +288,7 @@ xDTaraZ.Options = {
     Ragebot = false,
     RageMaxDistance = 1000,
     RagePriority = "Crosshair", -- НОВОЕ: Приоритет цели для Ragebot
+    RageBone = "Auto", -- ИСПРАВЛЕНО: кость для Rage/Silent ("Auto" = кость для аимботов)
     TargetBots = true,
     AimBone = "Auto", -- УЛУЧШЕНО: По умолчанию Auto
     AimPriority = "Crosshair",
@@ -614,6 +615,27 @@ function xDTaraZ.Target.Part(model, bone, origin)
         if part and part:IsA("BasePart") then return part end
     end
     return model:FindFirstChild("HumanoidRootPart")
+end
+
+-- ИСПРАВЛЕНО: таблицы профилей раньше не существовали (Profiles == nil),
+-- из-за чего весь подбор цели падал и приоритеты/кости не работали
+xDTaraZ.Target.Profiles = {
+    Silent = {},
+    Rage   = {},
+    Aim    = {},
+}
+
+function xDTaraZ.Target.Profile(kind)
+    local opts, profile = xDTaraZ.Options, xDTaraZ.Target.Profiles[kind]
+    if kind == "Silent" then
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.SilentFov, opts.RageBone or "Auto", opts.SilentPriority, opts.SilentMaxDistance
+    elseif kind == "Rage" then
+        -- ИЗМЕНЕНО: приоритет берется из настроек Ragebot
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = 0, opts.RageBone or "Auto", opts.RagePriority, opts.RageMaxDistance
+    else
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.AimFov, opts.AimBone, opts.AimPriority, opts.AimMaxDistance
+    end
+    return profile
 end
 
 function xDTaraZ.Target.Visible(from, model, point)
@@ -1020,18 +1042,14 @@ function xDTaraZ.Combat.Step()
         return
     end
 
-    function xDTaraZ.Target.Profile(kind)
-    local opts, profile = xDTaraZ.Options, xDTaraZ.Target.Profiles[kind]
-    if kind == "Silent" then
-        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.SilentFov, "Head", opts.SilentPriority, opts.SilentMaxDistance
-    elseif kind == "Rage" then
-        -- ИЗМЕНЕНО: теперь берем приоритет из настроек (по умолчанию Crosshair)
-        profile.Fov, profile.Bone, profile.Priority, profile.Range = 0, "Head", opts.RagePriority, opts.RageMaxDistance
-    else
-        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.AimFov, opts.AimBone, opts.AimPriority, opts.AimMaxDistance
+    -- ИСПРАВЛЕНО: цель раньше не выбиралась вообще (target был nil) —
+    -- теперь Ragebot сам ищет цель с учетом приоритета из UI
+    local target
+    if opts.Ragebot then
+        target = xDTaraZ.Target.Pick(xDTaraZ.Target.Profile("Rage"))
+    elseif state.LockedTarget and state.LockedTarget.Parent then
+        target = state.LockedTarget
     end
-    return profile
-end
     
     state.AimHead = target and xDTaraZ.Target.Part(target, "Head", Workspace.CurrentCamera.CFrame.Position)
     state.AimBody = target and xDTaraZ.Target.Part(target, "Torso", Workspace.CurrentCamera.CFrame.Position)
@@ -1050,6 +1068,8 @@ end
     local held = xDTaraZ.Combat.HeldGun()
     local empty = held ~= nil and rawget(held, "ammo") == 0
     
+    -- ИСПРАВЛЕНО: цель Ragebot запоминается, чтобы Silent Aim тоже стрелял по ней
+    if opts.Ragebot then state.LockedTarget = target end
     local shouldFire = not empty and ((target ~= nil and opts.Ragebot) or trigger == true)
     xDTaraZ.Combat.Fire(shouldFire)
 end
@@ -1075,9 +1095,12 @@ end
 -- УЛУЧШЕНО: Экспоненциальное сглаживание для Aimbot
 function xDTaraZ.Combat.LockCamera()
     local aimPos = xDTaraZ.State.LockPart and xDTaraZ.Target.GetAimPosition(xDTaraZ.State.LockPart, Workspace.CurrentCamera.CFrame.Position)
-    if not (xDTaraZ.Options.Aimbot and xDTaraZ.State.LockPart and xDTaraZ.State.LockPart.Parent and aimPos) then 
-        xDTaraZ.State.LockedTarget = nil
-        return 
+    if not (xDTaraZ.Options.Aimbot and xDTaraZ.State.LockPart and xDTaraZ.State.LockPart.Parent and aimPos) then
+        -- ИСПРАВЛЕНО: при выключенном Aimbot больше не сбрасывается фиксация Rage/Silent
+        if not (xDTaraZ.Options.AimSticky or xDTaraZ.Options.SilentTargetLock or xDTaraZ.Options.Ragebot) then
+            xDTaraZ.State.LockedTarget = nil
+        end
+        return
     end
     
     local cam = Workspace.CurrentCamera
@@ -2481,6 +2504,7 @@ function xDTaraZ.UI.BuildCombat(window)
     rage:AddToggle("Ragebot", { Text = T("Ragebot", "Ragebot"), Description = T("Shoots every enemy in sight on its own", "Стреляет по всем врагам в поле зрения") })
         :AddKeyPicker("RagebotKey", { Default = "None", Mode = "Toggle" })
     rage:AddDropdown("RagePriority", { Text = T("Target priority", "Приоритет цели"), Values = priorities, Default = "Crosshair" }) -- НОВОЕ
+    rage:AddDropdown("RageBone", { Text = T("Aim part", "Часть тела"), Values = { "Head", "Torso", "Auto" }, Default = "Auto", Tooltip = T("Also used by Silent Aim", "Также используется Silent Aim") }) -- ИСПРАВЛЕНО: кость для аимботов
     rage:AddSlider("RageMaxDistance", { Text = T("Max distance", "Макс. дистанция"), Min = 50, Max = 2000, Default = 1000, Suffix = "m" })
     Library.Compat.NeedCap("Ragebot", "Namecall")
 
