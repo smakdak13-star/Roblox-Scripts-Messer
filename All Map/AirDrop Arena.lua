@@ -157,6 +157,7 @@ xDTaraZ.Config = {
     UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     Discord = "https://discord.gg/FHVfmeSceA",
     UpdateLog = {
+        { "2026-10-16", "Ragebot: target priority now works (Crosshair / Health / Distance)\nNew bone picker for Rage, Silent and Aimbot with \"Auto\" option\nSilent Aim: separate target priority + body part\nRussian UI language added in Settings" },
         { "2026-10-10", "Updated for Season 5\nAuto Lottery in Auto Claim\nTeleport to and spectate any player\nItem pictures in every item list\nHalloween menu" },
         { "2026-10-05", "Fixed shots not killing: ammo spam, knife in hand\nAuto reload between fights, Auto ammo\nHealth bars on ESP now go down\nNew Rewards tab and Triggerbot\nSilent Aim, Aimbot, Ragebot each have their own settings" },
     },
@@ -281,6 +282,7 @@ xDTaraZ.Options = {
     SilentHitChance = 100,
     SilentHeadChance = 100,
     SilentPriority = "Crosshair",
+    SilentBone = "Auto", -- НОВОЕ: кость для Silent Aim (используется profile("Silent"))
     SilentFov = 250,
     ShowSilentFov = false,
     SilentMaxDistance = 1000,
@@ -628,7 +630,7 @@ xDTaraZ.Target.Profiles = {
 function xDTaraZ.Target.Profile(kind)
     local opts, profile = xDTaraZ.Options, xDTaraZ.Target.Profiles[kind]
     if kind == "Silent" then
-        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.SilentFov, opts.RageBone or "Auto", opts.SilentPriority, opts.SilentMaxDistance
+        profile.Fov, profile.Bone, profile.Priority, profile.Range = opts.SilentFov, opts.SilentBone or opts.RageBone or "Auto", opts.SilentPriority, opts.SilentMaxDistance
     elseif kind == "Rage" then
         -- ИЗМЕНЕНО: приоритет берется из настроек Ragebot
         profile.Fov, profile.Bone, profile.Priority, profile.Range = 0, opts.RageBone or "Auto", opts.RagePriority, opts.RageMaxDistance
@@ -2493,6 +2495,7 @@ function xDTaraZ.UI.BuildCombat(window)
     silent:AddSlider("SilentHitChance", { Text = T("Hit chance", "Шанс попадания"), Min = 1, Max = 100, Default = 100, Rounding = 0, Suffix = "%" })
     silent:AddSlider("SilentHeadChance", { Text = T("Headshot chance", "Шанс хедшота"), Min = 0, Max = 100, Default = 100, Rounding = 0, Suffix = "%" })
     silent:AddDropdown("SilentPriority", { Text = T("Target priority", "Приоритет цели"), Values = priorities, Default = "Crosshair" })
+    silent:AddDropdown("SilentBone", { Text = T("Aim part", "Часть тела"), Values = { "Head", "Torso", "Auto" }, Default = "Auto", Tooltip = T("Body part for Silent Aim hits", "Часть тела для попаданий Silent Aim") }) -- НОВОЕ: кость для Silent
     silent:AddSlider("SilentFov", { Text = T("FOV", "FOV"), Min = 20, Max = 1000, Default = 250, Suffix = "px" })
     silent:AddToggle("ShowSilentFov", { Text = T("Show FOV circle", "Показать круг FOV") })
     silent:AddSlider("SilentMaxDistance", { Text = T("Max distance", "Макс. дистанция"), Min = 50, Max = 2000, Default = 1000, Suffix = "m" })
