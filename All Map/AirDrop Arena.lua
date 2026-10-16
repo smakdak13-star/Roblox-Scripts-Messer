@@ -2770,6 +2770,15 @@ function xDTaraZ.UI.GuardConfigFeatures()
         local option = Library.Options[idx]
         if option and not option.Blocked then Library.Compat.Block(option, outdated) end
     end
+
+    -- ИСПРАВЛЕНО: rage-стрельба шла напрямую через RemoteEvent "Main" без проверки.
+    -- Если игра переименовала/удалила remote (обновление игры), Ragebot выглядел
+    -- "не работающим" без какой-либо подсказки. Теперь он блокируется с причиной,
+    -- как и остальные remote-функции.
+    local rageOption = Library.Options.Ragebot
+    if rageOption and not rageOption.Blocked and not GameLib.Main then
+        Library.Compat.Block(rageOption, outdated)
+    end
 end
 
 function xDTaraZ.UI.Build()
