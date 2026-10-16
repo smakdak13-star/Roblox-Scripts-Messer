@@ -157,7 +157,7 @@ xDTaraZ.Config = {
     UiSource = "https://raw.githubusercontent.com/smakdak13-star/Roblox-Scripts-Messer/refs/heads/main/ui.lua",
     Discord = "https://discord.gg/FHVfmeSceA",
     UpdateLog = {
-        { "2026-10-16", "Ragebot: target priority now works (Crosshair / Health / Distance)\nNew bone picker for Rage, Silent and Aimbot with \"Auto\" option\nSilent Aim: separate target priority + body part\nRussian UI language added in Settings" },
+        { "2026-10-16", "Ragebot fires on its own again: auto reload / ammo refill when the mag is empty, direct shot fallback on executors without hook support\nRagebot: target priority now works (Crosshair / Health / Distance)\nNew bone picker for Rage, Silent and Aimbot with \"Auto\" option\nSilent Aim: separate target priority + body part\nRussian UI language added in Settings" },
         { "2026-10-10", "Updated for Season 5\nAuto Lottery in Auto Claim\nTeleport to and spectate any player\nItem pictures in every item list\nHalloween menu" },
         { "2026-10-05", "Fixed shots not killing: ammo spam, knife in hand\nAuto reload between fights, Auto ammo\nHealth bars on ESP now go down\nNew Rewards tab and Triggerbot\nSilent Aim, Aimbot, Ragebot each have their own settings" },
     },
@@ -1035,6 +1035,7 @@ end
 
 function xDTaraZ.Combat.Step()
     local opts, state = xDTaraZ.State, xDTaraZ.Options
+    local combat = xDTaraZ.Combat
     xDTaraZ.Combat.UpdateCircles()
 
     local active = xDTaraZ.Combat.Aiming() or opts.Aimbot or opts.Triggerbot
@@ -1072,8 +1073,58 @@ function xDTaraZ.Combat.Step()
     
     -- ИСПРАВЛЕНО: цель Ragebot запоминается, чтобы Silent Aim тоже стрелял по ней
     if opts.Ragebot then state.LockedTarget = target end
-    local shouldFire = not empty and ((target ~= nil and opts.Ragebot) or trigger == true)
+    local wantRage = opts.Ragebot and target ~= nil
+    local shouldFire = not empty and (wantRage or trigger == true)
     xDTaraZ.Combat.Fire(shouldFire)
+
+    -- ИСПРАВЛЕНО (регрессия): раньше rage сам нажимал «огонь». Если хук подмены
+    -- выстрела недоступен (Namecall = нет), а авто-перезарядка выключена, патроны
+    -- кончались и Ragebot замолкал навсегда. Теперь при пустом магазине боеприпасы
+    -- добираются автоматически (если включён Auto Ammo), иначе оружие перезагружается.
+    if wantRage and empty then
+        local didReload = false
+        if opts.AutoAmmo then
+            Util.Try("rage ammo", xDTaraZ.Loot.AmmoStep)
+            held = xDTaraZ.Combat.HeldGun()
+            empty = held ~= nil and rawget(held, "ammo") == 0
+        end
+        if empty then didReload = xDTaraZ.Combat.Reload() end
+        -- ИСПРАВЛЕНО (регрессия): если хук подмены выстрела недоступен на этом
+        -- executor'е, rage теперь сам шлёт выстрел по цели напрямую через remote
+        -- Main (Blaster_ShootReq) — раньше стрельба целиком зависела от хука.
+        if not didReload and not combat.Unhook and xDTaraZ.Caps.Namecall == false then
+            Util.Try("rage direct shot", xDTaraZ.Combat.DirectShot)
+        end
+        if not didReload then
+            local notifyAt = combat.NotifyEmptyAt or 0
+            if osClock() - notifyAt > 15 then
+                combat.NotifyEmptyAt = osClock()
+                Library:Notify("Mario Hub", T("Ragebot: no ammo — enable Smart Reload or Auto Ammo",
+                    "Ragebot: нет патронов — включите Умную перезарядку или Auto Ammo"), 5, "Warn")
+            end
+        end
+    end
+end
+
+-- Прямой rage-выстрел через remote Main, без хука и без кликов мышью.
+function xDTaraZ.Combat.DirectShot()
+    local state, opts = xDTaraZ.State, xDTaraZ.Options
+    if not (GameLib.Main and state.Target and state.AimEntity and state.Alive) then return end
+    local cam = Workspace.CurrentCamera
+    local origin = cam.CFrame.Position
+    local part = xDTaraZ.Target.Part(state.Target, opts.RageBone or "Auto", origin) or state.AimBody or state.AimHead
+    if not (part and part.Parent) then return end
+    local aimPos = xDTaraZ.Target.GetAimPosition(part, origin)
+    local offset = aimPos - origin
+    local dist = offset.Magnitude
+    if dist < 1e-3 then return end
+    local dir = offset.Unit * math.min(dist, xDTaraZ.Config.DefaultRange)
+    xDTaraZ.Net.Send("Blaster_ShootReq", {
+        origin = CFrame.lookAt(origin, aimPos),
+        rayDirections = { dir },
+        rayResults = { { instance = part, normal = -offset.Unit, distance = dist, taggedEntityId = state.AimEntity, isTeammate = false } },
+    })
+    state.LastShot = osClock()
 end
 
 function xDTaraZ.Combat.OnServer(packet)
